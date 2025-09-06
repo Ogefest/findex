@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/ogefest/findex/pkg/models"
+	"github.com/ogefest/findex/models"
 )
 
 type LocalSource struct {

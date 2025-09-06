@@ -1,6 +1,6 @@
 package app
 
-import "github.com/ogefest/findex/pkg/models"
+import "github.com/ogefest/findex/models"
 
 // FileSource to abstrakcja źródła plików
 type FileSource interface {

@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ogefest/findex/pkg/models"
+	"github.com/ogefest/findex/models"
 )
 
 func InitIndexes(cfg *models.AppConfig, migrationsPath string) error {

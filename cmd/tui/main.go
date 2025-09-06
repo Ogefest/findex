@@ -12,7 +12,7 @@ import (
 	"github.com/charmbracelet/x/term"
 
 	"github.com/ogefest/findex/internal/app"
-	"github.com/ogefest/findex/pkg/models"
+	"github.com/ogefest/findex/models"
 )
 
 func main() {

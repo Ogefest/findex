@@ -14,7 +14,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/ogefest/findex/internal/app"
-	"github.com/ogefest/findex/pkg/models"
+	"github.com/ogefest/findex/models"
 )
 
 var (

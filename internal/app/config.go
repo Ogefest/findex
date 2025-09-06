@@ -1,7 +1,7 @@
 package app
 
 import (
-	"github.com/ogefest/findex/pkg/models"
+	"github.com/ogefest/findex/models"
 
 	"github.com/spf13/viper"
 )

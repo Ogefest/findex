@@ -9,7 +9,7 @@ import (
 
 func main() {
 	configPath := "./index_config.yaml"
-	migrationsPath := "migrations/0001_init.sql"
+	migrationsPath := "init.sql"
 
 	if len(os.Args) > 1 {
 		configPath = os.Args[1]

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ogefest/findex/pkg/models"
+	"github.com/ogefest/findex/models"
 	_ "modernc.org/sqlite"
 )
 

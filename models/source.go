@@ -1,9 +1,7 @@
-package app
-
-import "github.com/ogefest/findex/models"
+package models
 
 // FileSource to abstrakcja źródła plików
 type FileSource interface {
 	Name() string
-	Walk() <-chan models.FileRecord
+	Walk() <-chan FileRecord
 }

@@ -38,7 +38,7 @@ func ScanIndexes(cfg *models.AppConfig) error {
 			}
 		}
 
-		var source FileSource
+		var source models.FileSource
 
 		switch idx.SourceEngine {
 		case "local":
@@ -61,7 +61,7 @@ func ScanIndexes(cfg *models.AppConfig) error {
 	return nil
 }
 
-func scanSource(ctx context.Context, db *sql.DB, source FileSource) error {
+func scanSource(ctx context.Context, db *sql.DB, source models.FileSource) error {
 	if err := resetSearchableFlag(db); err != nil {
 		return err
 	}

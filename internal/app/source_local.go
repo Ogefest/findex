@@ -4,16 +4,18 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/ogefest/findex/pkg/models"
 )
 
 type LocalSource struct {
-	IndexName string
-	RootPaths []string
+	IndexName    string
+	RootPaths    []string
+	ExcludePaths []string
 }
 
-func NewLocalSource(indexName string, rootPaths []string) *LocalSource {
+func NewLocalSource(indexName string, rootPaths []string, excludePaths []string) *LocalSource {
 	return &LocalSource{IndexName: indexName, RootPaths: rootPaths}
 }
 
@@ -31,6 +33,16 @@ func (l *LocalSource) Walk() <-chan models.FileRecord {
 				if err != nil {
 					log.Printf("Error accessing %s: %v\n", path, err)
 					return nil
+				}
+
+				for _, exclude := range l.ExcludePaths {
+					matched, _ := filepath.Match(exclude, path)
+					if matched || strings.HasPrefix(path, exclude) {
+						if d.IsDir() {
+							return filepath.SkipDir
+						}
+						return nil
+					}
 				}
 
 				info, err := d.Info()

@@ -42,7 +42,7 @@ func ScanIndexes(cfg *models.AppConfig) error {
 
 		switch idx.SourceEngine {
 		case "local":
-			source = NewLocalSource(idx.Name, idx.RootPaths)
+			source = NewLocalSource(idx.Name, idx.RootPaths, idx.ExcludePaths)
 		default:
 			log.Printf("Skipping unsupported source_engine %s for index %s\n", idx.SourceEngine, idx.Name)
 			db.Close()
@@ -69,7 +69,7 @@ func scanSource(ctx context.Context, db *sql.DB, source FileSource) error {
 	log.Println("Scanning files...")
 
 	count := 0
-	batch := 1000 // logujemy co 100 plików
+	batch := 100000
 	var batchFiles []models.FileRecord
 
 	for f := range source.Walk() {

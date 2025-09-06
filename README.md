@@ -11,10 +11,8 @@ The project is designed to be modular: new data sources and user interfaces (CLI
 
 - Index files from one or more root directories
 - Store file information in a local SQLite database
-- Use **FTS** (full-text search) for fast lookups by name, extension, or path
 - Configurable multiple indexes
 - Metadata tracking (e.g., last index build timestamp)
-- Supports incremental index refresh with `is_searchable` flags
 - Text-based UI (**TUI**) for interactive searching
 - Command-line interface for building indexes
 

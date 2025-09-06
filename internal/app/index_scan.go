@@ -70,14 +70,23 @@ func scanSource(ctx context.Context, db *sql.DB, source FileSource) error {
 
 	count := 0
 	batch := 1000 // logujemy co 100 plików
+	var batchFiles []models.FileRecord
 
 	for f := range source.Walk() {
-		if err := upsertFile(ctx, db, f); err != nil {
-			log.Printf("Failed to upsert file %s: %v\n", f.Path, err)
-		}
+		batchFiles = append(batchFiles, f)
 		count++
-		if count%batch == 0 {
+
+		if len(batchFiles) >= batch {
+			if err := upsertFilesBatch(ctx, db, batchFiles); err != nil {
+				log.Printf("Failed to upsert batch: %v\n", err)
+			}
+			batchFiles = batchFiles[:0] // reset slice
 			log.Printf("Scanned %d files...", count)
+		}
+	}
+	if len(batchFiles) > 0 {
+		if err := upsertFilesBatch(ctx, db, batchFiles); err != nil {
+			log.Printf("Failed to upsert final batch: %v\n", err)
 		}
 	}
 
@@ -97,22 +106,49 @@ func scanSource(ctx context.Context, db *sql.DB, source FileSource) error {
 	return nil
 }
 
-func upsertFile(ctx context.Context, db *sql.DB, f models.FileRecord) error {
-	query := `
-    INSERT INTO files(path, name, dir, ext, size, mod_time, is_dir, is_searchable, index_name)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
-    ON CONFLICT(path) DO UPDATE SET
-        name=excluded.name,
-        dir=excluded.dir,
-        ext=excluded.ext,
-        size=excluded.size,
-        mod_time=excluded.mod_time,
-        is_dir=excluded.is_dir,
-        is_searchable=1
-    `
-	_, err := db.ExecContext(ctx, query,
-		f.Path, f.Name, f.Dir, f.Ext, f.Size, f.ModTime.Unix(), boolToInt(f.IsDir), f.IndexName)
-	return err
+func upsertFilesBatch(ctx context.Context, db *sql.DB, files []models.FileRecord) error {
+	if len(files) == 0 {
+		return nil
+	}
+
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		} else {
+			tx.Commit()
+		}
+	}()
+
+	stmt, err := tx.PrepareContext(ctx, `
+        INSERT INTO files(path, name, dir, ext, size, mod_time, is_dir, is_searchable, index_name)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
+        ON CONFLICT(path) DO UPDATE SET
+            name=excluded.name,
+            dir=excluded.dir,
+            ext=excluded.ext,
+            size=excluded.size,
+            mod_time=excluded.mod_time,
+            is_dir=excluded.is_dir,
+            is_searchable=1
+    `)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for _, f := range files {
+		_, err = stmt.ExecContext(ctx,
+			f.Path, f.Name, f.Dir, f.Ext, f.Size, f.ModTime.Unix(), boolToInt(f.IsDir), f.IndexName)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func resetSearchableFlag(db *sql.DB) error {

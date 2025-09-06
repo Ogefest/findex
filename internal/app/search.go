@@ -66,6 +66,7 @@ func (s *Searcher) searchIndex(db *sql.DB, query string, filter *FileFilter, lim
 	}
 
 	querySafe := strings.ReplaceAll(query, `"`, `""`) // zabezpieczenie FTS
+	querySafe = prepareFTSQuery(querySafe)
 
 	var conditions []string
 	if filter != nil {
@@ -117,4 +118,32 @@ func (s *Searcher) searchIndex(db *sql.DB, query string, filter *FileFilter, lim
 	}
 
 	return results, nil
+}
+
+func prepareFTSQuery(query string) string {
+	parts := strings.Fields(query)
+	var include []string
+	var exclude []string
+
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		if strings.HasPrefix(p, "-") && len(p) > 1 {
+			exclude = append(exclude, p[1:])
+		} else {
+			include = append(include, p)
+		}
+	}
+
+	var ftsQuery []string
+	if len(include) > 0 {
+		ftsQuery = append(ftsQuery, strings.Join(include, " AND "))
+	}
+	for _, ex := range exclude {
+		ftsQuery = append(ftsQuery, "NOT "+ex)
+	}
+
+	return strings.Join(ftsQuery, " ")
 }

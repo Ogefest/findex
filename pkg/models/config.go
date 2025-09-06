@@ -1,0 +1,13 @@
+package models
+
+type IndexConfig struct {
+	Name            string   `mapstructure:"name"`
+	SourceEngine    string   `mapstructure:"source_engine"`
+	DBPath          string   `mapstructure:"db_path"`
+	RootPaths       []string `mapstructure:"root_paths"`
+	RefreshInterval int      `mapstructure:"refresh_interval"` // w sekundach
+}
+
+type AppConfig struct {
+	Indexes []IndexConfig `mapstructure:"indexes"`
+}

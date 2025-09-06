@@ -9,11 +9,12 @@ import (
 )
 
 type LocalSource struct {
+	IndexName string
 	RootPaths []string
 }
 
-func NewLocalSource(rootPaths []string) *LocalSource {
-	return &LocalSource{RootPaths: rootPaths}
+func NewLocalSource(indexName string, rootPaths []string) *LocalSource {
+	return &LocalSource{IndexName: indexName, RootPaths: rootPaths}
 }
 
 func (l *LocalSource) Name() string {
@@ -36,15 +37,20 @@ func (l *LocalSource) Walk() <-chan models.FileRecord {
 				if err != nil {
 					return nil
 				}
+				relPath, err := filepath.Rel(root, path)
+				if err != nil {
+					relPath = path
+				}
 
 				ch <- models.FileRecord{
-					Path:    path,
-					Name:    d.Name(),
-					Dir:     filepath.Dir(path),
-					Ext:     filepath.Ext(d.Name()),
-					Size:    info.Size(),
-					ModTime: info.ModTime(),
-					IsDir:   d.IsDir(),
+					Path:      relPath,
+					Name:      d.Name(),
+					Dir:       root,
+					Ext:       filepath.Ext(d.Name()),
+					Size:      info.Size(),
+					ModTime:   info.ModTime(),
+					IsDir:     d.IsDir(),
+					IndexName: l.IndexName,
 				}
 				return nil
 			})

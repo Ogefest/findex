@@ -1,5 +1,6 @@
 CREATE TABLE IF NOT EXISTS files (
   id INTEGER PRIMARY KEY,
+  index_name TEXT,
   path TEXT NOT NULL UNIQUE,
   name TEXT,
   dir TEXT,

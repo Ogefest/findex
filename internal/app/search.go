@@ -91,9 +91,9 @@ func (s *Searcher) searchIndex(db *sql.DB, query string, filter *FileFilter, lim
 	}
 
 	sqlQuery := fmt.Sprintf(`
-        SELECT f.path, f.name, f.dir, f.ext, f.size, f.mod_time, f.is_dir
+        SELECT f.path, f.name, f.dir, f.ext, f.size, f.mod_time, f.is_dir, f.index_name
         FROM files f
-        JOIN files_fts ft ON ft.rowid = f.id
+        JOIN files_fts ft ON ft.rowid = f.rowid
         WHERE files_fts MATCH ? %s
         LIMIT ?`, whereClause)
 
@@ -108,7 +108,7 @@ func (s *Searcher) searchIndex(db *sql.DB, query string, filter *FileFilter, lim
 		var f models.FileRecord
 		var mod int64
 		var isDir int
-		if err := rows.Scan(&f.Path, &f.Name, &f.Dir, &f.Ext, &f.Size, &mod, &isDir); err != nil {
+		if err := rows.Scan(&f.Path, &f.Name, &f.Dir, &f.Ext, &f.Size, &mod, &isDir, &f.IndexName); err != nil {
 			continue
 		}
 		f.ModTime = time.Unix(mod, 0)

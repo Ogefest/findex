@@ -42,7 +42,7 @@ func ScanIndexes(cfg *models.AppConfig) error {
 
 		switch idx.SourceEngine {
 		case "local":
-			source = NewLocalSource(idx.RootPaths)
+			source = NewLocalSource(idx.Name, idx.RootPaths)
 		default:
 			log.Printf("Skipping unsupported source_engine %s for index %s\n", idx.SourceEngine, idx.Name)
 			db.Close()
@@ -99,8 +99,8 @@ func scanSource(ctx context.Context, db *sql.DB, source FileSource) error {
 
 func upsertFile(ctx context.Context, db *sql.DB, f models.FileRecord) error {
 	query := `
-    INSERT INTO files(path, name, dir, ext, size, mod_time, is_dir, is_searchable)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+    INSERT INTO files(path, name, dir, ext, size, mod_time, is_dir, is_searchable, index_name)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
     ON CONFLICT(path) DO UPDATE SET
         name=excluded.name,
         dir=excluded.dir,
@@ -111,7 +111,7 @@ func upsertFile(ctx context.Context, db *sql.DB, f models.FileRecord) error {
         is_searchable=1
     `
 	_, err := db.ExecContext(ctx, query,
-		f.Path, f.Name, f.Dir, f.Ext, f.Size, f.ModTime.Unix(), boolToInt(f.IsDir))
+		f.Path, f.Name, f.Dir, f.Ext, f.Size, f.ModTime.Unix(), boolToInt(f.IsDir), f.IndexName)
 	return err
 }
 

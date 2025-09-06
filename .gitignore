@@ -28,7 +28,6 @@ go.work.sum
 .env
 index_config.yaml
 data/
-.vscode
 
 # Editor/IDE
 # .idea/

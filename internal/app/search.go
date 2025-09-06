@@ -93,8 +93,8 @@ func (s *Searcher) searchIndex(db *sql.DB, query string, filter *FileFilter, lim
 	sqlQuery := fmt.Sprintf(`
         SELECT f.path, f.name, f.dir, f.ext, f.size, f.mod_time, f.is_dir
         FROM files f
-        JOIN files_fts ft ON ft.rowid = f.rowid
-        WHERE ft MATCH ? %s
+        JOIN files_fts ft ON ft.rowid = f.id
+        WHERE files_fts MATCH ? %s
         LIMIT ?`, whereClause)
 
 	rows, err := db.Query(sqlQuery, querySafe, limit)

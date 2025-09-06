@@ -14,21 +14,21 @@ var colorPalette = []string{
 	"130", // Orange
 	"93",  // Purple
 	"172", // Yellow
+	"220", // Bright Yellow
 	"37",  // Cyan
 	"64",  // Olive
 	"166", // Dark Orange
+	"51",  // Turquoise
 	"97",  // Light Purple
 	"33",  // Light Blue
 	"35",  // Teal
 	"39",  // Aqua
 	"46",  // Bright Green
-	"51",  // Turquoise
 	"129", // Magenta
 	"135", // Pink
 	"141", // Violet
 	"178", // Gold
 	"214", // Amber
-	"220", // Bright Yellow
 	"226", // Neon Yellow
 	"202", // Coral
 	"208", // Tangerine

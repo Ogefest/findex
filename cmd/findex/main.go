@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/ogefest/findex/internal/app"
+	"github.com/ogefest/findex/app"
 )
 
 func main() {

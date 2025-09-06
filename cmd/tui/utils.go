@@ -18,6 +18,22 @@ var colorPalette = []string{
 	"64",  // Olive
 	"166", // Dark Orange
 	"97",  // Light Purple
+	"33",  // Light Blue
+	"35",  // Teal
+	"39",  // Aqua
+	"46",  // Bright Green
+	"51",  // Turquoise
+	"129", // Magenta
+	"135", // Pink
+	"141", // Violet
+	"178", // Gold
+	"214", // Amber
+	"220", // Bright Yellow
+	"226", // Neon Yellow
+	"202", // Coral
+	"208", // Tangerine
+	"244", // Gray
+	"250", // Light Gr
 }
 
 // generateColorForIndex generates a deterministic color based on the index name

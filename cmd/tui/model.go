@@ -13,7 +13,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/ogefest/findex/internal/app"
+	"github.com/ogefest/findex/app"
 	"github.com/ogefest/findex/models"
 )
 

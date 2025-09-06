@@ -11,7 +11,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/term"
 
-	"github.com/ogefest/findex/internal/app"
+	"github.com/ogefest/findex/app"
 	"github.com/ogefest/findex/models"
 )
 

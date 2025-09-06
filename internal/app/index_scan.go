@@ -77,11 +77,12 @@ func scanSource(ctx context.Context, db *sql.DB, source FileSource) error {
 		count++
 
 		if len(batchFiles) >= batch {
+			log.Printf("Batch %d files ready to insert", count)
 			if err := upsertFilesBatch(ctx, db, batchFiles); err != nil {
 				log.Printf("Failed to upsert batch: %v\n", err)
 			}
 			batchFiles = batchFiles[:0] // reset slice
-			log.Printf("Scanned %d files...", count)
+			log.Printf("Scanned %d files saved", count)
 		}
 	}
 	if len(batchFiles) > 0 {
@@ -126,14 +127,7 @@ func upsertFilesBatch(ctx context.Context, db *sql.DB, files []models.FileRecord
 	stmt, err := tx.PrepareContext(ctx, `
         INSERT INTO files(path, name, dir, ext, size, mod_time, is_dir, is_searchable, index_name)
         VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
-        ON CONFLICT(path) DO UPDATE SET
-            name=excluded.name,
-            dir=excluded.dir,
-            ext=excluded.ext,
-            size=excluded.size,
-            mod_time=excluded.mod_time,
-            is_dir=excluded.is_dir,
-            is_searchable=1
+		ON CONFLICT(path) DO NOTHING;
     `)
 	if err != nil {
 		return err
@@ -165,6 +159,26 @@ func finalizeIndex(db *sql.DB) error {
 	if _, err := db.Exec(`DELETE FROM files WHERE is_searchable = 0`); err != nil {
 		return err
 	}
+
+	// wyczyść FTS i odbuduj go hurtem z tabeli files
+	// (szybsze niż insert po insertcie)
+	if _, err := db.Exec(`DELETE FROM files_fts`); err != nil {
+		return err
+	}
+	if _, err := db.Exec(`
+		INSERT INTO files_fts(rowid, name, path)
+		SELECT id, name, path
+		FROM files
+		WHERE is_searchable = 2
+	`); err != nil {
+		return err
+	}
+
+	// opcjonalnie zoptymalizuj indeks po dużym imporcie
+	if _, err := db.Exec(`INSERT INTO files_fts(files_fts) VALUES('optimize')`); err != nil {
+		return err
+	}
+
 	return nil
 }
 

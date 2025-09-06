@@ -124,7 +124,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.textInput.Focused() {
 					query := m.textInput.Value()
 					if query != "" && m.searcher != nil {
-						results, err := m.searcher.Search(query, &m.filter, 50)
+						results, err := m.searcher.Search(query, &m.filter, 200)
 						if err != nil {
 							m.err = err
 							return m, nil

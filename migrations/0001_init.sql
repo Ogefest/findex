@@ -16,13 +16,5 @@ CREATE TABLE IF NOT EXISTS metadata (
     value TEXT
 );
 
-
 CREATE VIRTUAL TABLE IF NOT EXISTS files_fts USING fts5(name, path, tokenize = 'unicode61');
 
-CREATE TRIGGER IF NOT EXISTS files_ai AFTER INSERT ON files BEGIN
-  INSERT INTO files_fts(rowid, name, path) VALUES (new.id, new.name, new.path);
-END;
-
-CREATE TRIGGER IF NOT EXISTS files_ad AFTER DELETE ON files BEGIN
-  INSERT INTO files_fts(files_fts, rowid, name, path) VALUES('delete', old.id, old.name, old.path);
-END;

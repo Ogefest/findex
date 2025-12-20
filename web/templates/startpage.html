@@ -1,0 +1,23 @@
+{{template "layout.html" .}}
+
+{{define "content"}}
+<div class="search-container">
+    <form class="search-form">
+        <input type="search" name="q" placeholder="Search for files...">
+        <button type="submit">Search</button>
+    </form>
+</div>
+
+<h3>Results</h3>
+<p>Search results will appear here.</p>
+<hr>
+<!-- Example of a result item -->
+<details>
+  <summary>path/to/your/file.txt</summary>
+  <p>Content snippet of the file will be shown here...</p>
+</details>
+<details>
+  <summary>another/example/document.md</summary>
+  <p># Markdown Heading...</p>
+</details>
+{{end}}

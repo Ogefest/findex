@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <link rel="stylesheet" href="/assets/pico.indigo.min.css">
+    <link rel="stylesheet" href="/assets/custom.css">
+    <title>{{.Title}}</title>
+  </head>
+  <body>
+<nav class="container-fluid">
+  <ul>
+    <li><strong>findex</strong></li>
+  </ul>
+  <ul>
+    <li><a href="/">Search</a></li>
+    <li><a href="/settings">Settings</a></li>
+  </ul>
+</nav>
+    <main class="container">
+      {{block "content" .}}
+      <h1>Hello world!</h1>
+      {{end}}
+    </main>
+  </body>
+</html>

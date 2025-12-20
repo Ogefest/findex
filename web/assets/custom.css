@@ -1,0 +1,32 @@
+.search-container {
+    display: flex;
+    justify-content: center;
+    padding: 1rem; /* Adjust padding for mobile */
+}
+
+.search-form {
+    display: flex;
+    width: 80%; /* Much wider */
+    max-width: 800px; /* Limit width on very large screens */
+    gap: 8px; /* Space between input and button */
+}
+
+.search-form input[type="search"] {
+    flex-grow: 1;
+    padding: 0.5rem 0.75rem; /* Smaller vertical padding */
+    height: auto; /* Let padding define height */
+    min-width: 0; /* Allow shrinking in flex container */
+}
+
+.search-form button {
+    padding: 0.5rem 1rem; /* Smaller vertical padding */
+    height: auto; /* Let padding define height */
+    white-space: nowrap; /* Prevent button text from wrapping */
+}
+
+/* Adjustments for smaller screens */
+@media (max-width: 768px) {
+    .search-form {
+        width: 95%; /* Even wider on smaller screens */
+    }
+}

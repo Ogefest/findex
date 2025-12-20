@@ -59,6 +59,34 @@ func (s *Searcher) Search(query string, filter *FileFilter, limitPerIndex int) (
 	return results, nil
 }
 
+func (s *Searcher) GetFileByID(indexName string, id int64) (*models.FileRecord, error) {
+	sqlQuery := fmt.Sprintf(`
+        SELECT f.id, f.path, f.name, f.dir, f.ext, f.size, f.mod_time, f.is_dir, f.index_name
+        FROM files f
+        JOIN files_fts ft ON ft.rowid = f.rowid
+        WHERE f.id = %d
+        LIMIT 1`, id)
+	rows, err := s.dbs[indexName].Query(sqlQuery)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var f models.FileRecord
+		var mod int64
+		var isDir int
+		if err := rows.Scan(&f.ID, &f.Path, &f.Name, &f.Dir, &f.Ext, &f.Size, &mod, &isDir, &f.IndexName); err != nil {
+			continue
+		}
+		f.ModTime = time.Unix(mod, 0)
+		f.IsDir = isDir != 0
+		return &f, nil
+	}
+
+	return nil, nil
+}
+
 // searchIndex wykonuje zapytanie FTS5 + dodatkowe filtry w jednej bazie
 func (s *Searcher) searchIndex(db *sql.DB, query string, filter *FileFilter, limit int) ([]models.FileRecord, error) {
 	if query == "" {
@@ -92,7 +120,7 @@ func (s *Searcher) searchIndex(db *sql.DB, query string, filter *FileFilter, lim
 	}
 
 	sqlQuery := fmt.Sprintf(`
-        SELECT f.path, f.name, f.dir, f.ext, f.size, f.mod_time, f.is_dir, f.index_name
+        SELECT f.id, f.path, f.name, f.dir, f.ext, f.size, f.mod_time, f.is_dir, f.index_name
         FROM files f
         JOIN files_fts ft ON ft.rowid = f.rowid
         WHERE files_fts MATCH ? %s
@@ -109,7 +137,7 @@ func (s *Searcher) searchIndex(db *sql.DB, query string, filter *FileFilter, lim
 		var f models.FileRecord
 		var mod int64
 		var isDir int
-		if err := rows.Scan(&f.Path, &f.Name, &f.Dir, &f.Ext, &f.Size, &mod, &isDir, &f.IndexName); err != nil {
+		if err := rows.Scan(&f.ID, &f.Path, &f.Name, &f.Dir, &f.Ext, &f.Size, &mod, &isDir, &f.IndexName); err != nil {
 			continue
 		}
 		f.ModTime = time.Unix(mod, 0)

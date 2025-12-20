@@ -1,16 +1,16 @@
-package app
+package webapp
 
 import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/ogefest/findex/web/startpage"
 )
 
 func router(webapp *WebApp) http.Handler {
 	r := chi.NewRouter()
 
-	r.Get("/", startpage.StartPage(webapp.Templates))
+	r.Get("/", webapp.startPage())
+	r.Get("/download/{index}-{id}", webapp.download())
 
 	fs := http.FileServer(http.Dir("web/assets"))
 	r.Handle("/assets/*", http.StripPrefix("/assets/", fs))

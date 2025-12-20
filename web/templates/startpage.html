@@ -2,20 +2,90 @@
 
 {{define "content"}}
 <div class="container">
+    <form class="mb-4" action="/" method="GET">
+        <div class="input-group mb-3">
+            <input type="search" class="form-control" placeholder="Search" aria-label="Search" name="q" value="{{.Query}}" autofocus>
+            <div class="input-group-append">
+                <button class="btn btn-primary" type="submit">Search</button>
+            </div>
+        </div>
+        
+        {{if .Indexes}}
+        <div class="form-group">
+            <div>
+            {{range $index := .Indexes}}
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input index-checkbox" type="checkbox" name="index[]" value="{{$index}}" id="index_{{$index}}">
+                    <label class="form-check-label" for="index_{{$index}}">{{$index}}</label>
+                </div>
+            {{end}}
+            </div>
+        </div>
+        {{end}}
+    </form>
+
     <h3>Search Results</h3>
     {{if .Results}}
-        <div class="list-group">
-            {{range .Results}}
-                <a href="#" class="list-group-item list-group-item-action flex-column align-items-start mb-2">
-                    <div class="d-flex w-100 justify-content-between">
-                        <h5 class="mb-1">{{.Path}}</h5>
-                    </div>
-                    <p class="mb-1">{{.ContentSnippet}}</p>
-                </a>
-            {{end}}
-        </div>
+        <ol>
+          {{range .Results}}
+          <li class="list-group-item mb-2 p-3">
+              <div class="d-flex justify-content-between align-items-start">
+                  <div class="me-3">
+                      <span class="badge bg-success text-uppercase" style="font-size:0.75rem;">{{.IndexName}}</span>
+                      
+                      {{if .IsDir}}
+                          <a target="_blank" href="/browse/{{.IndexName}}-{{.ID}}">
+                              <h5 class="d-inline ms-1 mb-1">{{.Name}}</h5>
+                          </a>
+                      {{else}}
+                          <a target="_blank" href="/download/{{.IndexName}}-{{.ID}}">
+                              <h5 class="d-inline ms-1 mb-1">{{.Name}}</h5>
+                          </a>
+                      {{end}}
+                      
+                      <div class="text-muted small">{{.Dir}}</div>
+                  </div>
+                  <div class="text-end">
+                      <div class="small text-muted">Last Modified:</div>
+                      <div class="mb-1">{{.ModTime.Format "2006-01-02 15:04:05"}}</div>
+                      <div class="fw-semibold">{{humanizeBytes .Size}}</div>
+                  </div>
+              </div>
+          </li>
+          {{end}}
+
+
+        </ol>
     {{else}}
         <p>No search results found.</p>
     {{end}}
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const checkboxes = document.querySelectorAll('.index-checkbox');
+    const storageKey = 'findex_checked_indexes';
+
+    // Load saved state
+    const savedState = JSON.parse(localStorage.getItem(storageKey));
+    if (savedState) {
+        checkboxes.forEach(checkbox => {
+            if (savedState[checkbox.value] !== undefined) {
+                checkbox.checked = savedState[checkbox.value];
+            }
+        });
+    }
+
+    // Save state on change
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', () => {
+            const currentState = {};
+            checkboxes.forEach(cb => {
+                currentState[cb.value] = cb.checked;
+            });
+            localStorage.setItem(storageKey, JSON.stringify(currentState));
+        });
+    });
+});
+</script>
 {{end}}

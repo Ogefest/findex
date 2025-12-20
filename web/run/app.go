@@ -1,4 +1,4 @@
-package app
+package webapp
 
 import (
 	"fmt"
@@ -43,6 +43,18 @@ func (webapp *WebApp) GetRouter() http.Handler {
 
 func (webapp *WebApp) InitTemplates() {
 	webapp.Templates = template.Must(
-		template.ParseGlob("web/templates/*.html"),
+		template.New("").Funcs(template.FuncMap{
+			"humanizeBytes": humanizeBytes,
+		}).ParseGlob("web/templates/*.html"),
 	)
+}
+
+func (webapp *WebApp) getIndexByName(name string) *models.IndexConfig {
+	for _, idx := range webapp.IndexConfig {
+		if idx.Name == name {
+			return idx
+		}
+	}
+	log.Printf("Unable to find index configuration by name %s\n", name)
+	return nil
 }

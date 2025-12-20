@@ -4,29 +4,33 @@
     padding: 1rem; /* Adjust padding for mobile */
 }
 
-.search-form {
+/* Adjustments for the compact search form */
+.search-form-compact {
     display: flex;
-    width: 80%; /* Much wider */
+    width: 80%; /* Control the overall width of the form */
     max-width: 800px; /* Limit width on very large screens */
-    gap: 8px; /* Space between input and button */
+    gap: 0.5rem; /* Space between input and button */
+    align-items: center; /* Vertically align items in the flex container */
 }
 
-.search-form input[type="search"] {
-    flex-grow: 1;
-    padding: 0.5rem 0.75rem; /* Smaller vertical padding */
+.search-form-compact input[type="search"] {
+    flex-grow: 1; /* Allow input to take available space */
+    padding: 0.375rem 0.75rem; /* Smaller vertical padding */
+    font-size: 0.875em; /* Smaller font size */
     height: auto; /* Let padding define height */
     min-width: 0; /* Allow shrinking in flex container */
 }
 
-.search-form button {
-    padding: 0.5rem 1rem; /* Smaller vertical padding */
+.search-form-compact button {
+    padding: 0.375rem 0.75rem; /* Smaller vertical padding, match input */
+    font-size: 0.875em; /* Smaller font size, match input */
     height: auto; /* Let padding define height */
     white-space: nowrap; /* Prevent button text from wrapping */
 }
 
 /* Adjustments for smaller screens */
 @media (max-width: 768px) {
-    .search-form {
+    .search-form-compact {
         width: 95%; /* Even wider on smaller screens */
     }
 }

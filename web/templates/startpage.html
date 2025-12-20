@@ -43,7 +43,9 @@
                           </a>
                       {{end}}
                       
-                      <div class="text-muted small">{{.Dir}}</div>
+                      <div class="text-muted small font-monospace">
+                        {{displayPath .Dir .Path .Name}}
+                    </div>
                   </div>
                   <div class="text-end">
                       <div class="small text-muted">Last Modified:</div>

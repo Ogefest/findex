@@ -1,6 +1,10 @@
 package webapp
 
-import "fmt"
+import (
+	"fmt"
+	"path/filepath"
+	"strings"
+)
 
 func humanizeBytes(s int64) string {
 	const (
@@ -21,4 +25,12 @@ func humanizeBytes(s int64) string {
 	default:
 		return fmt.Sprintf("%d B", s)
 	}
+}
+
+func displayPath(dir, path, name string) string {
+	// usuń nazwę pliku z path
+	rel := strings.TrimSuffix(path, name)
+	rel = strings.TrimSuffix(rel, "/")
+
+	return filepath.Join(dir, rel)
 }

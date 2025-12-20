@@ -45,6 +45,7 @@ func (webapp *WebApp) InitTemplates() {
 	webapp.Templates = template.Must(
 		template.New("").Funcs(template.FuncMap{
 			"humanizeBytes": humanizeBytes,
+			"displayPath":   displayPath,
 		}).ParseGlob("web/templates/*.html"),
 	)
 }

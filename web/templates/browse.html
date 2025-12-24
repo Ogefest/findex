@@ -1,0 +1,58 @@
+{{template "layout" .}}
+
+{{define "content"}}
+<div class="container">
+    <h2 class="mb-4">
+        <span class="badge bg-primary text-uppercase me-2">{{.Index}}</span>
+        Przeglądanie katalogu
+    </h2>
+
+    <!-- Breadcrumb nawigacja -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="/browse/{{.Index}}?path=">Root</a>
+            </li>
+            {{range .Breadcrumbs}}
+                <li class="breadcrumb-item">
+                    <a href="/browse/{{$.Index}}?path={{.Path | urlquery}}">{{.Part}}</a>
+                </li>
+            {{end}}
+        </ol>
+    </nav>
+
+    <!-- Lista plików i katalogów -->
+    {{if .Items}}
+        <div class="list-group">
+            {{range .Items}}
+                <a href="{{if .IsDir}}/browse/{{$.Index}}?path={{$.Path | addTrailingSlash}}{{.Name | urlquery}}{{else}}/download/{{$.Index}}-{{.ID}}{{end}}"
+                   class="list-group-item list-group-item-action d-flex justify-content-between align-items-start p-3"
+                   {{if not .IsDir}}target="_blank"{{end}}>
+                    <div class="me-3">
+                        <i class="bi {{if .IsDir}}bi-folder-fill text-warning{{else}}bi-file-earmark{{end}} me-2"></i>
+                        <strong>{{.Name}}</strong>
+                        {{if .IsDir}}/{{end}}
+
+                        <div class="text-muted small font-monospace mt-1">
+                            {{displayPath .Dir .Path .Name}}
+                        </div>
+                    </div>
+                    <div class="text-end text-muted small">
+                        <div>{{.ModTime.Format "2006-01-02 15:04"}}</div>
+                        <div class="fw-semibold">{{if not .IsDir}}{{humanizeBytes .Size}}{{else}}—{{end}}</div>
+                    </div>
+                </a>
+            {{end}}
+        </div>
+    {{else}}
+        <div class="alert alert-info">
+            Katalog jest pusty.
+        </div>
+    {{end}}
+
+    <!-- Powrót do wyszukiwania -->
+    <div class="mt-4">
+        <a href="/" class="btn btn-outline-secondary">← Powrót do wyszukiwania</a>
+    </div>
+</div>
+{{end}}

@@ -34,3 +34,13 @@ func displayPath(dir, path, name string) string {
 
 	return filepath.Join(dir, rel)
 }
+
+func addTrailingSlash(path string) string {
+	if path == "" {
+		return ""
+	}
+	if strings.HasSuffix(path, "/") {
+		return path
+	}
+	return path + "/"
+}

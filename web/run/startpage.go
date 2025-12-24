@@ -36,7 +36,7 @@ func (webapp *WebApp) startPage() http.HandlerFunc {
 			data["Results"] = result
 		}
 
-		err := webapp.Templates.ExecuteTemplate(w, "startpage.html", data)
+		err := webapp.TemplateCache["startpage.html"].Execute(w, data)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}

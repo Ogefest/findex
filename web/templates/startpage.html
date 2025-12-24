@@ -1,4 +1,4 @@
-{{template "layout.html" .}}
+{{template "layout" .}}
 
 {{define "content"}}
 <div class="container">
@@ -34,7 +34,7 @@
                       <span class="badge bg-success text-uppercase" style="font-size:0.75rem;">{{.IndexName}}</span>
                       
                       {{if .IsDir}}
-                          <a target="_blank" href="/browse/{{.IndexName}}-{{.ID}}">
+                          <a href="/browse/{{.IndexName}}?path={{.Path}}">
                               <h5 class="d-inline ms-1 mb-1">{{.Name}}</h5>
                           </a>
                       {{else}}
@@ -44,7 +44,20 @@
                       {{end}}
                       
                       <div class="text-muted small font-monospace">
-                        {{displayPath .Dir .Path .Name}}
+                        {{$indexName := .IndexName}}
+                        {{$fullPath := .Path}}
+                        {{$pathSegments := split $fullPath "/"}}
+                        {{$currentPath := ""}}
+                        {{range $i, $segment := $pathSegments}}
+                            {{if $segment}}
+                                {{if eq $i 0}}
+                                    {{$currentPath = $segment}}
+                                {{else}}
+                                    {{$currentPath = printf "%s/%s" $currentPath $segment}}
+                                {{end}}
+                                <a href="/browse/{{$indexName | urlquery}}?path={{$currentPath | urlquery}}">{{$segment}}</a>{{if ne (len $pathSegments) (add $i 1)}}/{{end}}
+                            {{end}}
+                        {{end}}
                     </div>
                   </div>
                   <div class="text-end">

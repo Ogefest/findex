@@ -24,6 +24,11 @@ func ScanIndexes(cfg *models.AppConfig) error {
 		if err != nil {
 			return fmt.Errorf("failed to open db: %w", err)
 		}
+		_, err = db.Exec(`PRAGMA journal_mode = WAL;`)
+		if err != nil {
+			return fmt.Errorf("failed to set journal_mode = WAL. %v", err)
+		}
+
 		lastScan, err := getLastScan(db)
 		if err != nil {
 			db.Close()
@@ -118,6 +123,7 @@ func upsertFilesBatch(ctx context.Context, db *sql.DB, files []models.FileRecord
 	}
 	defer func() {
 		if err != nil {
+			log.Printf("Unable to save data %v\n", err)
 			tx.Rollback()
 		} else {
 			tx.Commit()

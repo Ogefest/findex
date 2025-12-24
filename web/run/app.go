@@ -5,8 +5,11 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
+	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/ogefest/findex/app"
 	"github.com/ogefest/findex/models"
@@ -14,7 +17,7 @@ import (
 
 type WebApp struct {
 	Router        http.Handler
-	Templates     *template.Template
+	TemplateCache map[string]*template.Template
 	IndexConfig   []*models.IndexConfig
 	ActiveIndexes []string
 }
@@ -42,12 +45,34 @@ func (webapp *WebApp) GetRouter() http.Handler {
 }
 
 func (webapp *WebApp) InitTemplates() {
-	webapp.Templates = template.Must(
-		template.New("").Funcs(template.FuncMap{
-			"humanizeBytes": humanizeBytes,
-			"displayPath":   displayPath,
-		}).ParseGlob("web/templates/*.html"),
-	)
+	webapp.TemplateCache = make(map[string]*template.Template)
+
+	funcMap := template.FuncMap{
+		"humanizeBytes":    humanizeBytes,
+		"displayPath":      displayPath,
+		"split":            strings.Split,
+		"urlquery":         url.QueryEscape,
+		"addTrailingSlash": addTrailingSlash,
+		"add":              func(a, b int) int { return a + b },
+	}
+
+	pages, err := filepath.Glob("web/templates/*.html")
+	if err != nil {
+		log.Fatalf("failed to glob templates: %v", err)
+	}
+
+	for _, page := range pages {
+		name := filepath.Base(page)
+		if name == "layout.html" {
+			continue
+		}
+
+		ts, err := template.New(name).Funcs(funcMap).ParseFiles(page, "web/templates/layout.html")
+		if err != nil {
+			log.Fatalf("failed to parse template %s: %v", name, err)
+		}
+		webapp.TemplateCache[name] = ts
+	}
 }
 
 func (webapp *WebApp) getIndexByName(name string) *models.IndexConfig {

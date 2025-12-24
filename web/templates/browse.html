@@ -39,7 +39,7 @@
                     </div>
                     <div class="text-end text-muted small">
                         <div>{{.ModTime.Format "2006-01-02 15:04"}}</div>
-                        <div class="fw-semibold">{{if not .IsDir}}{{humanizeBytes .Size}}{{else}}—{{end}}</div>
+                        <div class="fw-semibold">{{humanizeBytes .Size}}</div>
                     </div>
                 </a>
             {{end}}

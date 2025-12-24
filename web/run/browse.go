@@ -37,7 +37,7 @@ func (webapp *WebApp) browse() http.HandlerFunc {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
-		log.Printf("%v", itemList)
+		// log.Printf("%v", itemList)
 
 		var breadcrumbs []Breadcrumb
 		var pathParts []string

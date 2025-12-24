@@ -155,14 +155,15 @@ func (s *Searcher) GetDirectoryContent(indexName string, path string) ([]models.
 }
 
 func (s *Searcher) GetDirectorySize(indexName string, path string) (int64, error) {
-	sql := fmt.Sprintf(`		
-		SELECT COALESCE(SUM(size), 0)
+	sql := `
+		SELECT SUM(size)
 		FROM files
-		WHERE path LIKE ? || '/%'
-		  AND is_dir = 0`, path)
+		WHERE path LIKE ?
+		AND is_dir = 0
+	`
 
 	var bytes int64
-	err := s.dbs[indexName].QueryRow(sql, path).Scan(&bytes)
+	err := s.dbs[indexName].QueryRow(sql, path+"/%").Scan(&bytes)
 	if err != nil {
 		return 0, err
 	}

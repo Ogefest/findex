@@ -13,11 +13,9 @@ func (webapp *WebApp) startPage() http.HandlerFunc {
 		query := r.URL.Query().Get("q")
 		indexesSearch := r.URL.Query()["index[]"]
 
-		data := map[string]any{
-			"Title": "Start",
-			"Query": query,
-		}
-		data["Indexes"] = webapp.ActiveIndexes
+		data := webapp.newTplData()
+		data["Title"] = "Start"
+		data["Query"] = query
 
 		if len(query) > 0 {
 			var idxPtrs []*models.IndexConfig

@@ -1,30 +1,6 @@
 {{template "layout" .}}
 
 {{define "content"}}
-<div class="container">
-    <form class="mb-4" action="/" method="GET">
-        <div class="input-group mb-3">
-            <input type="search" class="form-control" placeholder="Search" aria-label="Search" name="q" value="{{.Query}}" autofocus>
-            <div class="input-group-append">
-                <button class="btn btn-primary" type="submit">Search</button>
-            </div>
-        </div>
-        
-        {{if .Indexes}}
-        <div class="form-group">
-            <div>
-            {{range $index := .Indexes}}
-                <div class="form-check form-check-inline">
-                    <input class="form-check-input index-checkbox" type="checkbox" name="index[]" value="{{$index}}" id="index_{{$index}}">
-                    <label class="form-check-label" for="index_{{$index}}">{{$index}}</label>
-                </div>
-            {{end}}
-            </div>
-        </div>
-        {{end}}
-    </form>
-
-    <hr />
     {{if .Results}}
         <ol>
           {{range .Results}}
@@ -73,35 +49,7 @@
 
         </ol>
     {{else}}
-        <p>No search results found.</p>
+      <hr />
+      <p>No search results found.</p>
     {{end}}
-</div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const checkboxes = document.querySelectorAll('.index-checkbox');
-    const storageKey = 'findex_checked_indexes';
-
-    // Load saved state
-    const savedState = JSON.parse(localStorage.getItem(storageKey));
-    if (savedState) {
-        checkboxes.forEach(checkbox => {
-            if (savedState[checkbox.value] !== undefined) {
-                checkbox.checked = savedState[checkbox.value];
-            }
-        });
-    }
-
-    // Save state on change
-    checkboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', () => {
-            const currentState = {};
-            checkboxes.forEach(cb => {
-                currentState[cb.value] = cb.checked;
-            });
-            localStorage.setItem(storageKey, JSON.stringify(currentState));
-        });
-    });
-});
-</script>
 {{end}}

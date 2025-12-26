@@ -60,13 +60,12 @@ func (webapp *WebApp) browse() http.HandlerFunc {
 			})
 		}
 
-		data := map[string]any{
-			"Items":       itemList,
-			"Path":        path,
-			"Index":       index,
-			"Breadcrumbs": breadcrumbs,
-			"DirInfo":     currentDirInfo,
-		}
+		data := webapp.newTplData()
+		data["Items"] = itemList
+		data["Path"] = path
+		data["Index"] = index
+		data["Breadcrumbs"] = breadcrumbs
+		data["DirInfo"] = currentDirInfo
 
 		err = webapp.TemplateCache["browse.html"].Execute(w, data)
 		if err != nil {

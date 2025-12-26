@@ -5,6 +5,13 @@ import (
 	"strings"
 )
 
+func (webapp *WebApp) newTplData() map[string]any {
+	data := make(map[string]any)
+	data["Indexes"] = webapp.ActiveIndexes
+	data["Query"] = ""
+	return data
+}
+
 func humanizeBytes(s int64) string {
 	const (
 		KB = 1024

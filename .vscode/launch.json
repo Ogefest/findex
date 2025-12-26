@@ -2,14 +2,6 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Launch TUI",
-            "type": "go",
-            "request": "launch",
-            "mode": "auto",
-            "program": "${workspaceFolder}/cmd/tui/main.go",
-            "cwd": "${workspaceFolder}",
-        },
-        {
             "name": "Launch Findex",
             "type": "go",
             "request": "launch",

@@ -1,5 +1,5 @@
 MODULE := github.com/ogefest/findex
-BINS := findex cli tui webserver
+BINS := findex cli webserver
 BIN_DIR := bin
 GO := go
 GOFLAGS := -ldflags="-s -w"

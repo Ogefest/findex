@@ -30,7 +30,7 @@ func (webapp *WebApp) startPage() http.HandlerFunc {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			result, err := searcher.Search(query, &app.FileFilter{}, 10)
+			result, err := searcher.Search(query, &app.FileFilter{}, 100)
 			log.Printf("Found %v\n", result)
 			data["Results"] = result
 		}

@@ -13,26 +13,22 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// FileFilter pozwala filtrować wyniki wyszukiwania
 type FileFilter struct {
 	MinSize int64
 	MaxSize int64
 	Exts    []string
 }
 
-// Searcher trzyma otwarte połączenia do wszystkich indeksów
 type Searcher struct {
-	dbs map[string]*sql.DB // key: indeks name
+	dbs map[string]*sql.DB
 }
 
-// NewSearcher otwiera wszystkie bazy i zwraca Searcher
 func NewSearcher(indexes []*models.IndexConfig) (*Searcher, error) {
 	dbs := make(map[string]*sql.DB)
 	for _, idx := range indexes {
 		dsn := fmt.Sprintf("file:%s?mode=ro", idx.DBPath)
 		db, err := sql.Open("sqlite", dsn)
 		if err != nil {
-			// zamykamy już otwarte przed błędem
 			for _, d := range dbs {
 				d.Close()
 			}
@@ -46,14 +42,12 @@ func NewSearcher(indexes []*models.IndexConfig) (*Searcher, error) {
 	return &Searcher{dbs: dbs}, nil
 }
 
-// Close zamyka wszystkie połączenia
 func (s *Searcher) Close() {
 	for _, db := range s.dbs {
 		db.Close()
 	}
 }
 
-// Search wykonuje zapytanie we wszystkich indeksach i zwraca wyniki
 func (s *Searcher) Search(query string, filter *FileFilter, limitPerIndex int) ([]models.FileRecord, error) {
 	var results []models.FileRecord
 	for _, db := range s.dbs {
@@ -198,7 +192,6 @@ func (s *Searcher) GetDirectorySize(indexName string, path string) (models.DirIn
 	return result, nil
 }
 
-// searchIndex wykonuje zapytanie FTS5 + dodatkowe filtry w jednej bazie
 func (s *Searcher) searchIndex(db *sql.DB, query string, filter *FileFilter, limit int) ([]models.FileRecord, error) {
 	log.Printf("Index search %s %d\n", query, limit)
 

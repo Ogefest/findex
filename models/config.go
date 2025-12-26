@@ -6,7 +6,7 @@ type IndexConfig struct {
 	DBPath          string   `mapstructure:"db_path"`
 	RootPaths       []string `mapstructure:"root_paths"`
 	ExcludePaths    []string `mapstructure:"exclude_paths"`
-	RefreshInterval int      `mapstructure:"refresh_interval"` // w sekundach
+	RefreshInterval int      `mapstructure:"refresh_interval"`
 }
 
 type AppConfig struct {

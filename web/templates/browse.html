@@ -2,9 +2,7 @@
 
 {{define "content"}}
 <div class="container">
-    <!-- Breadcrumb nawigacja -->
     <div class="row align-items-center mb-4">
-        <!-- Kolumna 1: breadcrumb -->
         <div class="col-md-10">
         <nav aria-label="breadcrumb" class="mb-4">
             <ol class="breadcrumb">
@@ -33,7 +31,6 @@
         </div>
     </div>
 
-    <!-- Lista plików i katalogów -->
     {{if .Items}}
         <div class="list-group list-group-flush">
             {{range .Items}}
@@ -61,10 +58,5 @@
             Katalog jest pusty.
         </div>
     {{end}}
-
-    <!-- Powrót do wyszukiwania -->
-    <div class="mt-4">
-        <a href="/" class="btn btn-outline-secondary">← Powrót do wyszukiwania</a>
-    </div>
 </div>
 {{end}}

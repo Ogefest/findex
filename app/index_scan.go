@@ -86,7 +86,7 @@ func scanSource(ctx context.Context, db *sql.DB, source models.FileSource) error
 			if err := upsertFilesBatch(ctx, db, batchFiles); err != nil {
 				log.Printf("Failed to upsert batch: %v\n", err)
 			}
-			batchFiles = batchFiles[:0] // reset slice
+			batchFiles = batchFiles[:0]
 			log.Printf("Scanned %d files saved", count)
 		}
 	}
@@ -97,13 +97,10 @@ func scanSource(ctx context.Context, db *sql.DB, source models.FileSource) error
 	}
 
 	log.Printf("Scanning completed. Total files scanned: %d", count)
-
-	// 3. finalizacja indeksu
 	if err := finalizeIndex(db); err != nil {
 		return err
 	}
 
-	// 4. zapis ostatniego skanu
 	if err := setLastScan(db); err != nil {
 		return err
 	}
@@ -157,17 +154,12 @@ func resetSearchableFlag(db *sql.DB) error {
 }
 
 func finalizeIndex(db *sql.DB) error {
-	// rekordy świeże (1) → finalne (2)
 	if _, err := db.Exec(`UPDATE files SET is_searchable = 2 WHERE is_searchable = 1`); err != nil {
 		return err
 	}
-	// rekordy nieaktualne (0) → usuwamy
 	if _, err := db.Exec(`DELETE FROM files WHERE is_searchable = 0`); err != nil {
 		return err
 	}
-
-	// wyczyść FTS i odbuduj go hurtem z tabeli files
-	// (szybsze niż insert po insertcie)
 	if _, err := db.Exec(`DELETE FROM files_fts`); err != nil {
 		return err
 	}
@@ -180,7 +172,6 @@ func finalizeIndex(db *sql.DB) error {
 		return err
 	}
 
-	// opcjonalnie zoptymalizuj indeks po dużym imporcie
 	if _, err := db.Exec(`INSERT INTO files_fts(files_fts) VALUES('optimize')`); err != nil {
 		return err
 	}
@@ -207,7 +198,7 @@ func getLastScan(db *sql.DB) (time.Time, error) {
 	err := db.QueryRow(`SELECT value FROM metadata WHERE key='last_scan'`).Scan(&ts)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return time.Time{}, nil // brak rekordu = nigdy nie skanowano
+			return time.Time{}, nil
 		}
 		return time.Time{}, err
 	}

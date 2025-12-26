@@ -60,7 +60,6 @@
           const checkboxes = document.querySelectorAll('.index-checkbox');
           const storageKey = 'findex_checked_indexes';
       
-          // Load saved state
           const savedState = JSON.parse(localStorage.getItem(storageKey));
           if (savedState) {
               checkboxes.forEach(checkbox => {
@@ -69,8 +68,6 @@
                   }
               });
           }
-      
-          // Save state on change
           checkboxes.forEach(checkbox => {
               checkbox.addEventListener('change', () => {
                   const currentState = {};

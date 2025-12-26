@@ -34,7 +34,6 @@ func humanizeBytes(s int64) string {
 }
 
 func displayPath(dir, path, name string) string {
-	// usuń nazwę pliku z path
 	rel := strings.TrimSuffix(path, name)
 	rel = strings.TrimSuffix(rel, "/")
 

@@ -18,20 +18,17 @@ func InitIndexes(cfg *models.AppConfig, migrationsPath string) error {
 			return fmt.Errorf("unsupported source_engine %q for index %s", idx.SourceEngine, idx.Name)
 		}
 
-		// zamiana ścieżki DB na pełną
 		absDBPath, err := filepath.Abs(idx.DBPath)
 		if err != nil {
 			return fmt.Errorf("failed to get absolute path for %s: %w", idx.DBPath, err)
 		}
 		defined[absDBPath] = true
 
-		// utworzenie indeksu
 		if err := ensureIndex(idx, migrationsPath); err != nil {
 			return fmt.Errorf("failed to init index %s: %w", idx.Name, err)
 		}
 	}
 
-	// usuwanie niepotrzebnych indeksów
 	dataDir, err := filepath.Abs("./data")
 	if err != nil {
 		return fmt.Errorf("failed to get absolute path for data dir: %w", err)

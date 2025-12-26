@@ -37,7 +37,12 @@ func (webapp *WebApp) browse() http.HandlerFunc {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
-		// log.Printf("%v", itemList)
+		currentDirInfo, err := searcher.GetDirectorySize(index, path)
+		if err != nil {
+			log.Printf("Unable to get current dir info %s %s\n", index, path)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
 
 		var breadcrumbs []Breadcrumb
 		var pathParts []string
@@ -60,6 +65,7 @@ func (webapp *WebApp) browse() http.HandlerFunc {
 			"Path":        path,
 			"Index":       index,
 			"Breadcrumbs": breadcrumbs,
+			"DirInfo":     currentDirInfo,
 		}
 
 		err = webapp.TemplateCache["browse.html"].Execute(w, data)

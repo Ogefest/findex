@@ -2,7 +2,6 @@ package webapp
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
 )
 
@@ -32,7 +31,7 @@ func displayPath(dir, path, name string) string {
 	rel := strings.TrimSuffix(path, name)
 	rel = strings.TrimSuffix(rel, "/")
 
-	return filepath.Join(dir, rel)
+	return fmt.Sprintf("/%s", rel)
 }
 
 func addTrailingSlash(path string) string {

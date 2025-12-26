@@ -1,6 +1,8 @@
 package models
 
-import "time"
+import (
+	"time"
+)
 
 type FileRecord struct {
 	ID        int64     `db:"id"`

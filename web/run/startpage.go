@@ -29,7 +29,8 @@ func (webapp *WebApp) startPage() http.HandlerFunc {
 			searcher, err := app.NewSearcher(idxPtrs)
 			if err != nil {
 				log.Printf("Unable to create searcher %v\n", err)
-				// return errpage
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
 			}
 			result, err := searcher.Search(query, &app.FileFilter{}, 10)
 			log.Printf("Found %v\n", result)

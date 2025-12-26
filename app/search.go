@@ -151,7 +151,8 @@ func (s *Searcher) GetDirectoryContent(indexName string, path string) ([]models.
 		f.IsDir = isDir != 0
 
 		if f.IsDir {
-			f.Size, _ = s.GetDirectorySize(indexName, f.Path)
+			dirInfo, _ := s.GetDirectorySize(indexName, f.Path)
+			f.Size = dirInfo.Size
 		}
 
 		result = append(result, f)
@@ -166,26 +167,35 @@ func (s *Searcher) GetDirectoryContent(indexName string, path string) ([]models.
 	return result, nil
 }
 
-func (s *Searcher) GetDirectorySize(indexName string, path string) (int64, error) {
+func (s *Searcher) GetDirectorySize(indexName string, path string) (models.DirInfo, error) {
+
 	log.Printf("Dir size for %s %s\n", indexName, path)
+	var result = models.DirInfo{}
 
-	q := `PRAGMA case_sensitive_like = ON;`
-	s.dbs[indexName].Exec(q)
+	if path == "" {
+		sql := "SELECT SUM(size), COUNT(*) FROM files"
+		err := s.dbs[indexName].QueryRow(sql).Scan(&result.Size, &result.Files)
+		if err != nil {
+			return models.DirInfo{}, err
+		}
+	} else {
+		q := `PRAGMA case_sensitive_like = ON;`
+		s.dbs[indexName].Exec(q)
 
-	sql := `
-		SELECT SUM(size)
+		sql := `
+		SELECT SUM(size), COUNT(*)
 		FROM files
 		WHERE path LIKE ?
 		AND is_dir = 0
 	`
 
-	var bytes int64
-	err := s.dbs[indexName].QueryRow(sql, path+"/%").Scan(&bytes)
-	if err != nil {
-		return 0, err
+		err := s.dbs[indexName].QueryRow(sql, path+"/%").Scan(&result.Size, &result.Files)
+		if err != nil {
+			return models.DirInfo{}, err
+		}
 	}
 
-	return bytes, nil
+	return result, nil
 }
 
 // searchIndex wykonuje zapytanie FTS5 + dodatkowe filtry w jednej bazie

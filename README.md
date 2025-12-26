@@ -13,7 +13,7 @@ The project is designed to be modular: new data sources and user interfaces (CLI
 - Store file information in a local SQLite database
 - Configurable multiple indexes
 - Metadata tracking (e.g., last index build timestamp)
-- Text-based UI (**TUI**) for interactive searching
+- Web based UI
 - Command-line interface for building indexes
 
 ---
@@ -30,10 +30,10 @@ This will produce:
 bin/
  ├── findex
  ├── cli
- └── tui
+ └── webserver
  ```
 
 - Prepare `index_config.yaml` with similar structure to `sample_index_config.yaml` in root directory.
 - Run `bin/findex` to build index
-- Run `bin/tui` to have text UI for search
+- Run `bin/webserver` to have text UI for search, check localhost:8080 for search
 

@@ -44,21 +44,22 @@
                       {{end}}
                       
                       <div class="text-muted small font-monospace">
-                        {{$indexName := .IndexName}}
-                        {{$fullPath := .Path}}
-                        {{$pathSegments := split $fullPath "/"}}
-                        {{$currentPath := ""}}
-                        {{range $i, $segment := $pathSegments}}
-                            {{if $segment}}
-                                {{if eq $i 0}}
-                                    {{$currentPath = $segment}}
-                                {{else}}
-                                    {{$currentPath = printf "%s/%s" $currentPath $segment}}
+                            {{$indexName := .IndexName}}
+                            {{$fullPath := .Path}}
+                            {{$pathSegments := split $fullPath "/"}}
+                            {{$currentPath := ""}}
+                            
+                            {{range $i, $segment := $pathSegments}}
+                                {{if and $segment (lt $i (sub (len $pathSegments) 1))}}
+                                    {{if eq $i 0}}
+                                        {{$currentPath = $segment}}
+                                    {{else}}
+                                        {{$currentPath = printf "%s/%s" $currentPath $segment}}
+                                    {{end}}
+                                    / <a href="/browse/{{$indexName | urlquery}}?path={{$currentPath | urlquery}}">{{$segment}}</a>
                                 {{end}}
-                                <a href="/browse/{{$indexName | urlquery}}?path={{$currentPath | urlquery}}">{{$segment}}</a>{{if ne (len $pathSegments) (add $i 1)}}/{{end}}
                             {{end}}
-                        {{end}}
-                    </div>
+                        </div>
                   </div>
                   <div class="text-end">
                       <div class="small text-muted">Last Modified:</div>

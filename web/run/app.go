@@ -54,6 +54,7 @@ func (webapp *WebApp) InitTemplates() {
 		"urlquery":         url.QueryEscape,
 		"addTrailingSlash": addTrailingSlash,
 		"add":              func(a, b int) int { return a + b },
+		"sub":              func(a, b int) int { return a - b },
 	}
 
 	pages, err := filepath.Glob("web/templates/*.html")

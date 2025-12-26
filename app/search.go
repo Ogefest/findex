@@ -3,7 +3,9 @@ package app
 import (
 	"database/sql"
 	"fmt"
+	"hash/crc32"
 	"log"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -93,24 +95,32 @@ func (s *Searcher) GetFileByID(indexName string, id int64) (*models.FileRecord, 
 }
 
 func (s *Searcher) GetDirectoryContent(indexName string, path string) ([]models.FileRecord, error) {
-	sqlQuery := `
-        SELECT 
-            f.id,
-            f.path,
-            f.name,
-            f.dir,
-            f.ext,
-            f.size,
-            f.mod_time,
-            f.is_dir,
-            f.index_name
-        FROM files f
-        WHERE
-            f.path LIKE ? || '/%'
-            AND substr(f.path, length(? || '/') + 1) NOT LIKE '%/%'
-    `
+	log.Printf("List dir content %s %s\n", indexName, path)
+	if path != "" {
+		path = fmt.Sprintf("%s/", path)
+	}
 
-	rows, err := s.dbs[indexName].Query(sqlQuery, path, path)
+	dir := filepath.Dir(path)
+	normalized := filepath.Clean(dir)
+	dirIndex := int64(crc32.ChecksumIEEE([]byte(normalized)))
+
+	sqlQuery := `
+		SELECT
+			f.id,
+			f.path,
+			f.name,
+			f.dir,
+			f.ext,
+			f.size,
+			f.mod_time,
+			f.is_dir,
+			f.index_name
+		FROM files f
+		WHERE
+			dir_index = ? AND f.path LIKE ?
+		ORDER BY f.is_dir DESC, f.name;
+    `
+	rows, err := s.dbs[indexName].Query(sqlQuery, dirIndex, fmt.Sprintf("%s%%", path))
 	if err != nil {
 		return nil, err
 	}
@@ -151,10 +161,17 @@ func (s *Searcher) GetDirectoryContent(indexName string, path string) ([]models.
 		return nil, err
 	}
 
+	log.Printf("Found %d elems in %s %s", len(result), indexName, path)
+
 	return result, nil
 }
 
 func (s *Searcher) GetDirectorySize(indexName string, path string) (int64, error) {
+	log.Printf("Dir size for %s %s\n", indexName, path)
+
+	q := `PRAGMA case_sensitive_like = ON;`
+	s.dbs[indexName].Exec(q)
+
 	sql := `
 		SELECT SUM(size)
 		FROM files
@@ -173,6 +190,8 @@ func (s *Searcher) GetDirectorySize(indexName string, path string) (int64, error
 
 // searchIndex wykonuje zapytanie FTS5 + dodatkowe filtry w jednej bazie
 func (s *Searcher) searchIndex(db *sql.DB, query string, filter *FileFilter, limit int) ([]models.FileRecord, error) {
+	log.Printf("Index search %s %d\n", query, limit)
+
 	if query == "" {
 		return nil, nil
 	}
@@ -212,7 +231,7 @@ func (s *Searcher) searchIndex(db *sql.DB, query string, filter *FileFilter, lim
         LIMIT ?`, whereClause)
 
 	rows, err := db.Query(sqlQuery, querySafe, limit)
-	log.Printf("Search Q: %s %s %s", sqlQuery, querySafe, limit)
+
 	if err != nil {
 		return nil, err
 	}

@@ -131,8 +131,8 @@ func upsertFilesBatch(ctx context.Context, db *sql.DB, files []models.FileRecord
 	}()
 
 	stmt, err := tx.PrepareContext(ctx, `
-        INSERT INTO files(path, name, dir, ext, size, mod_time, is_dir, is_searchable, index_name)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
+        INSERT INTO files(path, name, dir, ext, size, mod_time, is_dir, is_searchable, index_name, dir_index)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
 		ON CONFLICT(path) DO NOTHING;
     `)
 	if err != nil {
@@ -142,7 +142,7 @@ func upsertFilesBatch(ctx context.Context, db *sql.DB, files []models.FileRecord
 
 	for _, f := range files {
 		_, err = stmt.ExecContext(ctx,
-			f.Path, f.Name, f.Dir, f.Ext, f.Size, f.ModTime.Unix(), boolToInt(f.IsDir), f.IndexName)
+			f.Path, f.Name, f.Dir, f.Ext, f.Size, f.ModTime.Unix(), boolToInt(f.IsDir), f.IndexName, f.DirIndex)
 		if err != nil {
 			return err
 		}

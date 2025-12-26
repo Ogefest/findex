@@ -37,7 +37,7 @@ func (webapp *WebApp) download() http.HandlerFunc {
 			return
 		}
 
-		fullPath := fmt.Sprintf("%s%s", fileInfo.Dir, fileInfo.Path)
+		fullPath := fmt.Sprintf("%s/%s", fileInfo.Dir, fileInfo.Path)
 		log.Printf("Download %s\n", fullPath)
 
 		file, err := os.Open(fullPath)

@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS files (
   path TEXT NOT NULL UNIQUE,
   name TEXT,
   dir TEXT,
+  dir_index INTEGER,
   ext TEXT,
   size INTEGER,
   mod_time INTEGER,
@@ -18,3 +19,5 @@ CREATE TABLE IF NOT EXISTS metadata (
 
 CREATE VIRTUAL TABLE IF NOT EXISTS files_fts USING fts5(name, path, tokenize = 'unicode61');
 
+CREATE INDEX IF NOT EXISTS idx_files_path ON files(path);
+CREATE INDEX IF NOT EXISTS idx_dir_index ON files(dir_index);

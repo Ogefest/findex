@@ -8,6 +8,7 @@ type FileRecord struct {
 	Path      string    `db:"path"`
 	Name      string    `db:"name"`
 	Dir       string    `db:"dir"`
+	DirIndex  int64     `db:"dir_index"`
 	Ext       string    `db:"ext"`
 	Size      int64     `db:"size"`
 	ModTime   time.Time `db:"mod_time"`

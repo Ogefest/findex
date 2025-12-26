@@ -2,16 +2,13 @@
 
 {{define "content"}}
 <div class="container">
-    <h2 class="mb-4">
-        <span class="badge bg-primary text-uppercase me-2">{{.Index}}</span>
-        Przeglądanie katalogu
-    </h2>
+    <h2 class="mb-4">Browse</h2>
 
     <!-- Breadcrumb nawigacja -->
     <nav aria-label="breadcrumb" class="mb-4">
         <ol class="breadcrumb">
             <li class="breadcrumb-item">
-                <a href="/browse/{{.Index}}?path=">Root</a>
+                <span class="badge bg-success text-uppercase me-2">{{.Index}}</span> <a href="/browse/{{.Index}}?path="><i class="bi bi-house-fill text-primary me-2"></i></a>
             </li>
             {{range .Breadcrumbs}}
                 <li class="breadcrumb-item">

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"hash/crc32"
 	"log"
 	"os"
 	"path/filepath"
@@ -18,6 +19,13 @@ type LocalSource struct {
 
 func NewLocalSource(indexName string, rootPaths []string, excludePaths []string) *LocalSource {
 	return &LocalSource{IndexName: indexName, RootPaths: rootPaths}
+}
+
+func (l *LocalSource) getDirDeep(path string) uint32 {
+	dir := filepath.Dir(path)
+	normalized := filepath.Clean(dir)
+	result := crc32.ChecksumIEEE([]byte(normalized))
+	return result
 }
 
 func (l *LocalSource) Name() string {
@@ -66,6 +74,7 @@ func (l *LocalSource) Walk() <-chan models.FileRecord {
 						Path:      relPath,
 						Name:      d.Name(),
 						Dir:       root,
+						DirIndex:  int64(l.getDirDeep(relPath)),
 						Ext:       filepath.Ext(d.Name()),
 						Size:      info.Size(),
 						ModTime:   info.ModTime(),

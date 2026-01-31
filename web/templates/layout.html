@@ -12,7 +12,17 @@
 
     <link href="/assets/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/assets/icons/bootstrap-icons.min.css">
-    
+
+    <style>
+      .search-input:focus {
+        border-color: #6c757d;
+        box-shadow: none;
+      }
+      .input-group .search-input:focus + .btn,
+      .input-group .search-input:focus ~ .btn {
+        border-left-color: #6c757d;
+      }
+    </style>
 
   </head>
 
@@ -28,7 +38,7 @@
     <div class="container border-bottom mb-3">
       <form class="mb-4" action="/" method="GET" id="searchForm">
           <div class="input-group mb-2">
-              <input type="search" class="form-control" placeholder="Search" aria-label="Search" name="q" value="{{.Query}}" autofocus>
+              <input type="search" class="form-control search-input" placeholder="Search" aria-label="Search" name="q" value="{{.Query}}" autofocus>
               <button class="btn btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#advancedFilters" aria-expanded="false">
                   <i class="bi bi-funnel"></i>
               </button>

@@ -22,6 +22,94 @@
       .input-group .search-input:focus ~ .btn {
         border-left-color: #6c757d;
       }
+
+      /* Index checkboxes - responsive grid */
+      .index-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem 1rem;
+      }
+      .index-list .form-check {
+        margin: 0;
+      }
+
+      /* Mobile card view for file lists */
+      .file-card {
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+        background: #fff;
+      }
+      .file-card:active {
+        background: #f8f9fa;
+      }
+      .file-card .file-icon {
+        font-size: 1.5rem;
+        margin-right: 0.75rem;
+      }
+      .file-card .file-name {
+        font-weight: 600;
+        word-break: break-word;
+      }
+      .file-card .file-meta {
+        font-size: 0.8rem;
+        color: #6c757d;
+        margin-top: 0.25rem;
+      }
+      .file-card .file-path {
+        font-size: 0.75rem;
+        color: #6c757d;
+        word-break: break-all;
+        margin-top: 0.25rem;
+      }
+
+      /* Desktop: show table, hide cards */
+      .desktop-table { display: block; }
+      .mobile-cards { display: none; }
+
+      @media (max-width: 768px) {
+        /* Mobile: hide table, show cards */
+        .desktop-table { display: none !important; }
+        .mobile-cards { display: block !important; }
+
+        /* Smaller container padding on mobile */
+        .container, .container-fluid {
+          padding-left: 0.75rem;
+          padding-right: 0.75rem;
+        }
+
+        /* Browse header adjustments */
+        .browse-header {
+          flex-direction: column !important;
+          align-items: flex-start !important;
+        }
+        .browse-header .browse-stats {
+          width: 100%;
+          justify-content: flex-start !important;
+          margin-top: 0.5rem;
+          padding-top: 0.5rem;
+          border-top: 1px solid #dee2e6;
+        }
+        .browse-header .browse-stats > div {
+          border: none !important;
+          padding: 0 1rem 0 0 !important;
+        }
+
+        /* Breadcrumb on mobile */
+        .breadcrumb {
+          font-size: 0.85rem;
+        }
+
+        /* Footer on mobile */
+        footer .text-center {
+          font-size: 0.7rem;
+        }
+        footer .mx-2 {
+          margin-left: 0.25rem !important;
+          margin-right: 0.25rem !important;
+        }
+      }
     </style>
 
   </head>
@@ -100,9 +188,9 @@
 
           {{if .Indexes}}
           <div class="form-group">
-              <div>
+              <div class="index-list">
               {{range $index := .Indexes}}
-                  <div class="form-check form-check-inline">
+                  <div class="form-check">
                       <input class="form-check-input index-checkbox" type="checkbox" name="index[]" value="{{$index}}" id="index_{{$index}}">
                       <label class="form-check-label" for="index_{{$index}}">{{$index}}</label>
                   </div>

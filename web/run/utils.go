@@ -5,6 +5,8 @@ import (
 	"html/template"
 	"net/url"
 	"strings"
+
+	"github.com/ogefest/findex/version"
 )
 
 func (webapp *WebApp) newTplData() map[string]any {
@@ -19,6 +21,9 @@ func (webapp *WebApp) newTplData() map[string]any {
 		"date_to":   "",
 		"type":      "",
 	}
+	data["Version"] = version.Version
+	data["Commit"] = version.Commit
+	data["BuildDate"] = version.BuildDate
 	return data
 }
 

@@ -14,9 +14,13 @@ import (
 )
 
 type FileFilter struct {
-	MinSize int64
-	MaxSize int64
-	Exts    []string
+	MinSize     int64
+	MaxSize     int64
+	Exts        []string
+	ModTimeFrom int64 // unix timestamp
+	ModTimeTo   int64 // unix timestamp
+	OnlyFiles   bool
+	OnlyDirs    bool
 }
 
 type Searcher struct {
@@ -195,14 +199,7 @@ func (s *Searcher) GetDirectorySize(indexName string, path string) (models.DirIn
 func (s *Searcher) searchIndex(db *sql.DB, query string, filter *FileFilter, limit int) ([]models.FileRecord, error) {
 	log.Printf("Index search %s %d\n", query, limit)
 
-	if query == "" {
-		return nil, nil
-	}
-
-	querySafe := strings.ReplaceAll(query, `"`, `""`)
-	querySafe = strings.ReplaceAll(query, `.`, ` `)
-	querySafe = prepareFTSQuery(querySafe)
-
+	// Build filter conditions
 	var conditions []string
 	if filter != nil {
 		if filter.MinSize > 0 {
@@ -215,25 +212,65 @@ func (s *Searcher) searchIndex(db *sql.DB, query string, filter *FileFilter, lim
 			var exts []string
 			for _, e := range filter.Exts {
 				e = strings.TrimPrefix(e, ".")
-				exts = append(exts, fmt.Sprintf("f.ext='%s'", e))
+				exts = append(exts, fmt.Sprintf("f.ext='.%s'", e))
 			}
 			conditions = append(conditions, "("+strings.Join(exts, " OR ")+")")
 		}
+		if filter.ModTimeFrom > 0 {
+			conditions = append(conditions, fmt.Sprintf("f.mod_time >= %d", filter.ModTimeFrom))
+		}
+		if filter.ModTimeTo > 0 {
+			conditions = append(conditions, fmt.Sprintf("f.mod_time <= %d", filter.ModTimeTo))
+		}
+		if filter.OnlyFiles {
+			conditions = append(conditions, "f.is_dir = 0")
+		}
+		if filter.OnlyDirs {
+			conditions = append(conditions, "f.is_dir = 1")
+		}
 	}
 
-	whereClause := ""
-	if len(conditions) > 0 {
-		whereClause = " AND " + strings.Join(conditions, " AND ")
+	// If no query and no filters, return empty
+	if query == "" && len(conditions) == 0 {
+		return nil, nil
 	}
 
-	sqlQuery := fmt.Sprintf(`
-        SELECT f.id, f.path, f.name, f.dir, f.ext, f.size, f.mod_time, f.is_dir, f.index_name
-        FROM files f
-        JOIN files_fts ft ON ft.rowid = f.rowid
-        WHERE files_fts MATCH ? %s
-        LIMIT ?`, whereClause)
+	var sqlQuery string
+	var rows *sql.Rows
+	var err error
 
-	rows, err := db.Query(sqlQuery, querySafe, limit)
+	if query != "" {
+		// Full-text search with optional filters
+		querySafe := strings.ReplaceAll(query, `"`, `""`)
+		querySafe = strings.ReplaceAll(querySafe, `.`, ` `)
+		querySafe = prepareFTSQuery(querySafe)
+
+		whereClause := ""
+		if len(conditions) > 0 {
+			whereClause = " AND " + strings.Join(conditions, " AND ")
+		}
+
+		sqlQuery = fmt.Sprintf(`
+			SELECT f.id, f.path, f.name, f.dir, f.ext, f.size, f.mod_time, f.is_dir, f.index_name
+			FROM files f
+			JOIN files_fts ft ON ft.rowid = f.rowid
+			WHERE files_fts MATCH ? %s
+			LIMIT ?`, whereClause)
+
+		rows, err = db.Query(sqlQuery, querySafe, limit)
+	} else {
+		// Filter-only search (no FTS)
+		whereClause := strings.Join(conditions, " AND ")
+
+		sqlQuery = fmt.Sprintf(`
+			SELECT f.id, f.path, f.name, f.dir, f.ext, f.size, f.mod_time, f.is_dir, f.index_name
+			FROM files f
+			WHERE %s
+			ORDER BY f.mod_time DESC
+			LIMIT ?`, whereClause)
+
+		rows, err = db.Query(sqlQuery, limit)
+	}
 
 	if err != nil {
 		return nil, err

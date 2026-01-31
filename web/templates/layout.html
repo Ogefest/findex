@@ -19,20 +19,75 @@
   <body>
 
     <nav class="navbar mb-3">
-      <div class="container justify-content-center" style="font-family: Monaco,'Liberation Mono', Consolas, 'Courier New',  'Lucida Console', 'DejaVu Sans Mono', monospace;">
-        <a class="navbar-brand mx-auto fs-4" href="/"><i class="bi bi-box-seam-fill me-2"></i>FINDEX</a>
+      <div class="container" style="font-family: Monaco,'Liberation Mono', Consolas, 'Courier New',  'Lucida Console', 'DejaVu Sans Mono', monospace;">
+        <a class="navbar-brand fs-4" href="/"><i class="bi bi-box-seam-fill me-2"></i>FINDEX</a>
+        <a class="btn btn-outline-secondary btn-sm" href="/stats"><i class="bi bi-bar-chart-fill me-1"></i>Stats</a>
       </div>
     </nav>
     
     <div class="container border-bottom mb-3">
-      <form class="mb-4" action="/" method="GET">
-          <div class="input-group mb-3">
+      <form class="mb-4" action="/" method="GET" id="searchForm">
+          <div class="input-group mb-2">
               <input type="search" class="form-control" placeholder="Search" aria-label="Search" name="q" value="{{.Query}}" autofocus>
-              <div class="input-group-append">
-                  <button class="btn btn-primary" type="submit">Search</button>
+              <button class="btn btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#advancedFilters" aria-expanded="false">
+                  <i class="bi bi-funnel"></i>
+              </button>
+              <button class="btn btn-primary" type="submit">Search</button>
+          </div>
+
+          <!-- Advanced Filters -->
+          <div class="collapse {{if .FilterParams.ext}}show{{else if .FilterParams.min_size}}show{{else if .FilterParams.max_size}}show{{else if .FilterParams.date_from}}show{{else if .FilterParams.date_to}}show{{else if .FilterParams.type}}show{{end}}" id="advancedFilters">
+              <div class="card card-body bg-light mb-2 p-3">
+                  <div class="row g-2">
+                      <!-- File Type -->
+                      <div class="col-md-2">
+                          <label class="form-label small mb-1">Type</label>
+                          <select class="form-select form-select-sm" name="type">
+                              <option value="">All</option>
+                              <option value="files" {{if eq .FilterParams.type "files"}}selected{{end}}>Files only</option>
+                              <option value="dirs" {{if eq .FilterParams.type "dirs"}}selected{{end}}>Folders only</option>
+                          </select>
+                      </div>
+
+                      <!-- Extensions -->
+                      <div class="col-md-2">
+                          <label class="form-label small mb-1">Extensions</label>
+                          <input type="text" class="form-control form-control-sm" name="ext" placeholder="mp4,jpg,pdf" value="{{.FilterParams.ext}}">
+                      </div>
+
+                      <!-- Min Size -->
+                      <div class="col-md-2">
+                          <label class="form-label small mb-1">Min Size</label>
+                          <input type="text" class="form-control form-control-sm" name="min_size" placeholder="10MB" value="{{.FilterParams.min_size}}">
+                      </div>
+
+                      <!-- Max Size -->
+                      <div class="col-md-2">
+                          <label class="form-label small mb-1">Max Size</label>
+                          <input type="text" class="form-control form-control-sm" name="max_size" placeholder="1GB" value="{{.FilterParams.max_size}}">
+                      </div>
+
+                      <!-- Date From -->
+                      <div class="col-md-2">
+                          <label class="form-label small mb-1">Modified From</label>
+                          <input type="date" class="form-control form-control-sm" name="date_from" value="{{.FilterParams.date_from}}">
+                      </div>
+
+                      <!-- Date To -->
+                      <div class="col-md-2">
+                          <label class="form-label small mb-1">Modified To</label>
+                          <input type="date" class="form-control form-control-sm" name="date_to" value="{{.FilterParams.date_to}}">
+                      </div>
+                  </div>
+                  <div class="mt-2">
+                      <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearFilters()">
+                          <i class="bi bi-x-circle me-1"></i>Clear filters
+                      </button>
+                      <small class="text-muted ms-2">Size format: 10KB, 100MB, 1GB</small>
+                  </div>
               </div>
           </div>
-          
+
           {{if .Indexes}}
           <div class="form-group">
               <div>
@@ -54,12 +109,12 @@
 
     </main><!-- /.container -->
 
-    <script src="/assets/bootstrap.min.js"></script>
+    <script src="/assets/bootstrap.bundle.min.js"></script>
     <script>
       document.addEventListener('DOMContentLoaded', function() {
           const checkboxes = document.querySelectorAll('.index-checkbox');
           const storageKey = 'findex_checked_indexes';
-      
+
           const savedState = JSON.parse(localStorage.getItem(storageKey));
           if (savedState) {
               checkboxes.forEach(checkbox => {
@@ -78,6 +133,16 @@
               });
           });
       });
+
+      function clearFilters() {
+          const form = document.getElementById('searchForm');
+          form.querySelector('[name="type"]').value = '';
+          form.querySelector('[name="ext"]').value = '';
+          form.querySelector('[name="min_size"]').value = '';
+          form.querySelector('[name="max_size"]').value = '';
+          form.querySelector('[name="date_from"]').value = '';
+          form.querySelector('[name="date_to"]').value = '';
+      }
       </script>
   </body>
 </html>

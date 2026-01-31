@@ -84,7 +84,7 @@ func scanSource(ctx context.Context, db *sql.DB, source models.FileSource) error
 		if len(batchFiles) >= batch {
 			log.Printf("Batch %d files ready to insert", count)
 			if err := upsertFilesBatch(ctx, db, batchFiles); err != nil {
-				log.Printf("Failed to upsert batch: %v\n", err)
+				return fmt.Errorf("failed to upsert batch at %d files: %w", count, err)
 			}
 			batchFiles = batchFiles[:0]
 			log.Printf("Scanned %d files saved", count)
@@ -92,7 +92,7 @@ func scanSource(ctx context.Context, db *sql.DB, source models.FileSource) error
 	}
 	if len(batchFiles) > 0 {
 		if err := upsertFilesBatch(ctx, db, batchFiles); err != nil {
-			log.Printf("Failed to upsert final batch: %v\n", err)
+			return fmt.Errorf("failed to upsert final batch: %w", err)
 		}
 	}
 
@@ -118,12 +118,10 @@ func upsertFilesBatch(ctx context.Context, db *sql.DB, files []models.FileRecord
 	if err != nil {
 		return err
 	}
+	committed := false
 	defer func() {
-		if err != nil {
-			log.Printf("Unable to save data %v\n", err)
+		if !committed {
 			tx.Rollback()
-		} else {
-			tx.Commit()
 		}
 	}()
 
@@ -144,6 +142,11 @@ func upsertFilesBatch(ctx context.Context, db *sql.DB, files []models.FileRecord
 			return err
 		}
 	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+	committed = true
 
 	return nil
 }

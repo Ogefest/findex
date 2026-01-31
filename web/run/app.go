@@ -48,13 +48,16 @@ func (webapp *WebApp) InitTemplates() {
 	webapp.TemplateCache = make(map[string]*template.Template)
 
 	funcMap := template.FuncMap{
-		"humanizeBytes":    humanizeBytes,
-		"displayPath":      displayPath,
-		"split":            strings.Split,
-		"urlquery":         url.QueryEscape,
-		"addTrailingSlash": addTrailingSlash,
-		"add":              func(a, b int) int { return a + b },
-		"sub":              func(a, b int) int { return a - b },
+		"humanizeBytes":       humanizeBytes,
+		"displayPath":         displayPath,
+		"split":               strings.Split,
+		"urlquery":            url.QueryEscape,
+		"addTrailingSlash":    addTrailingSlash,
+		"add":                 func(a, b int) int { return a + b },
+		"sub":                 func(a, b int) int { return a - b },
+		"percent":             func(part, total int64) int64 { if total == 0 { return 0 }; return (part * 100) / total },
+		"buildQueryString":    buildQueryString,
+		"buildQueryStringPage": buildQueryStringPage,
 	}
 
 	pages, err := filepath.Glob("web/templates/*.html")

@@ -2,29 +2,63 @@
 
 {{define "content"}}
     {{if .Results}}
-        <ol>
-          {{range .Results}}
-          <li class="list-group-item mb-2 p-3">
-              <div class="d-flex justify-content-between align-items-start">
-                  <div class="me-3">
-                      <span class="badge bg-success text-uppercase" style="font-size:0.75rem;">{{.IndexName}}</span>
-                      
-                      {{if .IsDir}}
-                          <a href="/browse/{{.IndexName}}?path={{.Path}}">
-                              <h5 class="d-inline ms-1 mb-1">{{.Name}}</h5>
-                          </a>
-                      {{else}}
-                          <a target="_blank" href="/download/{{.IndexName}}-{{.ID}}">
-                              <h5 class="d-inline ms-1 mb-1">{{.Name}}</h5>
-                          </a>
-                      {{end}}
-                      
-                      <div class="text-muted small font-monospace">
+        <!-- Results header -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="text-muted">
+                Found <strong>{{.TotalResults}}</strong> results
+                {{if gt .TotalPages 1}}
+                    <span class="ms-2">Page {{.CurrentPage}} of {{.TotalPages}}</span>
+                {{end}}
+            </div>
+            <div class="btn-group btn-group-sm">
+                <a href="?{{buildQueryString . 25}}" class="btn btn-outline-secondary {{if eq .PerPage 25}}active{{end}}">25</a>
+                <a href="?{{buildQueryString . 50}}" class="btn btn-outline-secondary {{if eq .PerPage 50}}active{{end}}">50</a>
+                <a href="?{{buildQueryString . 100}}" class="btn btn-outline-secondary {{if eq .PerPage 100}}active{{end}}">100</a>
+            </div>
+        </div>
+
+        <!-- Results table -->
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 40px;"></th>
+                        <th>Name</th>
+                        <th>Path</th>
+                        <th class="text-end" style="width: 100px;">Size</th>
+                        <th class="text-end" style="width: 140px;">Modified</th>
+                        <th style="width: 80px;">Index</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Results}}
+                    <tr>
+                        <td class="text-center">
+                            {{if .IsDir}}
+                                <i class="bi bi-folder-fill text-warning"></i>
+                            {{else}}
+                                <i class="bi bi-file-earmark text-secondary"></i>
+                            {{end}}
+                        </td>
+                        <td>
+                            {{if .IsDir}}
+                                <a href="/browse/{{.IndexName}}?path={{.Path}}" class="text-decoration-none fw-semibold">
+                                    {{.Name}}
+                                </a>
+                            {{else}}
+                                <a href="/download/{{.IndexName}}-{{.ID}}" target="_blank" class="text-decoration-none fw-semibold">
+                                    {{.Name}}
+                                </a>
+                            {{end}}
+                            {{if .Ext}}
+                                <span class="badge bg-light text-dark ms-1">{{.Ext}}</span>
+                            {{end}}
+                        </td>
+                        <td class="text-muted small font-monospace text-truncate" style="max-width: 300px;">
                             {{$indexName := .IndexName}}
                             {{$fullPath := .Path}}
                             {{$pathSegments := split $fullPath "/"}}
                             {{$currentPath := ""}}
-                            
                             {{range $i, $segment := $pathSegments}}
                                 {{if and $segment (lt $i (sub (len $pathSegments) 1))}}
                                     {{if eq $i 0}}
@@ -32,24 +66,82 @@
                                     {{else}}
                                         {{$currentPath = printf "%s/%s" $currentPath $segment}}
                                     {{end}}
-                                    / <a href="/browse/{{$indexName | urlquery}}?path={{$currentPath | urlquery}}">{{$segment}}</a>
+                                    /<a href="/browse/{{$indexName | urlquery}}?path={{$currentPath | urlquery}}" class="text-muted">{{$segment}}</a>
                                 {{end}}
                             {{end}}
-                        </div>
-                  </div>
-                  <div class="text-end">
-                      <div class="small text-muted">Last Modified:</div>
-                      <div class="mb-1">{{.ModTime.Format "2006-01-02 15:04:05"}}</div>
-                      <div class="fw-semibold">{{humanizeBytes .Size}}</div>
-                  </div>
-              </div>
-          </li>
-          {{end}}
+                        </td>
+                        <td class="text-end">
+                            {{if .IsDir}}
+                                <span class="text-muted">-</span>
+                            {{else}}
+                                {{humanizeBytes .Size}}
+                            {{end}}
+                        </td>
+                        <td class="text-end small text-muted">
+                            {{.ModTime.Format "2006-01-02 15:04"}}
+                        </td>
+                        <td>
+                            <span class="badge bg-success">{{.IndexName}}</span>
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
 
+        <!-- Pagination -->
+        {{if gt .TotalPages 1}}
+        <nav aria-label="Search results pages" class="mt-4">
+            <ul class="pagination justify-content-center">
+                <!-- Previous -->
+                <li class="page-item {{if not .HasPrevPage}}disabled{{end}}">
+                    <a class="page-link" href="?{{buildQueryStringPage . .PrevPage}}" {{if not .HasPrevPage}}tabindex="-1"{{end}}>
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
 
-        </ol>
+                <!-- Page numbers -->
+                {{range .Pages}}
+                    {{if eq . -1}}
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                    {{else}}
+                        <li class="page-item {{if eq . $.CurrentPage}}active{{end}}">
+                            <a class="page-link" href="?{{buildQueryStringPage $ .}}">{{.}}</a>
+                        </li>
+                    {{end}}
+                {{end}}
+
+                <!-- Next -->
+                <li class="page-item {{if not .HasNextPage}}disabled{{end}}">
+                    <a class="page-link" href="?{{buildQueryStringPage . .NextPage}}" {{if not .HasNextPage}}tabindex="-1"{{end}}>
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        {{end}}
+
+    {{else if .HasSearch}}
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>No results found matching your criteria.
+        </div>
     {{else}}
-      <hr />
-      <p>No search results found.</p>
+        <h4 class="mb-3">Browse Indexes</h4>
+        <div class="list-group">
+            {{range .IndexConfigs}}
+            <a href="/browse/{{.Name | urlquery}}?path=" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-1">
+                        <i class="bi bi-folder-fill text-warning me-2"></i>
+                        {{.Name}}
+                    </h5>
+                    <small class="text-muted font-monospace">
+                        {{range $i, $path := .RootPaths}}{{if $i}}, {{end}}{{$path}}{{end}}
+                    </small>
+                </div>
+                <i class="bi bi-chevron-right text-muted"></i>
+            </a>
+            {{end}}
+        </div>
     {{end}}
 {{end}}

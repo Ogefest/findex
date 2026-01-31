@@ -10,6 +10,7 @@ func router(webapp *WebApp) http.Handler {
 	r := chi.NewRouter()
 
 	r.Get("/", webapp.startPage())
+	r.Get("/stats", webapp.stats())
 	r.Get("/download/{index}-{id}", webapp.download())
 	r.Get("/browse/{index}", webapp.browse())
 

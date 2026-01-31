@@ -18,7 +18,7 @@ type LocalSource struct {
 }
 
 func NewLocalSource(indexName string, rootPaths []string, excludePaths []string) *LocalSource {
-	return &LocalSource{IndexName: indexName, RootPaths: rootPaths}
+	return &LocalSource{IndexName: indexName, RootPaths: rootPaths, ExcludePaths: excludePaths}
 }
 
 func (l *LocalSource) getDirDeep(path string) uint32 {

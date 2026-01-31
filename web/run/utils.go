@@ -2,6 +2,8 @@ package webapp
 
 import (
 	"fmt"
+	"html/template"
+	"net/url"
 	"strings"
 )
 
@@ -9,6 +11,14 @@ func (webapp *WebApp) newTplData() map[string]any {
 	data := make(map[string]any)
 	data["Indexes"] = webapp.ActiveIndexes
 	data["Query"] = ""
+	data["FilterParams"] = map[string]string{
+		"min_size":  "",
+		"max_size":  "",
+		"ext":       "",
+		"date_from": "",
+		"date_to":   "",
+		"type":      "",
+	}
 	return data
 }
 
@@ -48,4 +58,65 @@ func addTrailingSlash(path string) string {
 		return path
 	}
 	return path + "/"
+}
+
+// buildQueryString builds a query string with a new per_page value
+func buildQueryString(data map[string]any, perPage int) template.URL {
+	params := url.Values{}
+
+	if q, ok := data["Query"].(string); ok && q != "" {
+		params.Set("q", q)
+	}
+
+	if fp, ok := data["FilterParams"].(map[string]string); ok {
+		for key, val := range fp {
+			if val != "" {
+				params.Set(key, val)
+			}
+		}
+	}
+
+	// Add selected indexes
+	if indexes, ok := data["SelectedIndexes"].([]string); ok {
+		for _, idx := range indexes {
+			params.Add("index[]", idx)
+		}
+	}
+
+	params.Set("per_page", fmt.Sprintf("%d", perPage))
+	params.Set("page", "1") // Reset to page 1 when changing per_page
+
+	return template.URL(params.Encode())
+}
+
+// buildQueryStringPage builds a query string with a new page value
+func buildQueryStringPage(data map[string]any, page int) template.URL {
+	params := url.Values{}
+
+	if q, ok := data["Query"].(string); ok && q != "" {
+		params.Set("q", q)
+	}
+
+	if fp, ok := data["FilterParams"].(map[string]string); ok {
+		for key, val := range fp {
+			if val != "" {
+				params.Set(key, val)
+			}
+		}
+	}
+
+	// Add selected indexes
+	if indexes, ok := data["SelectedIndexes"].([]string); ok {
+		for _, idx := range indexes {
+			params.Add("index[]", idx)
+		}
+	}
+
+	if pp, ok := data["PerPage"].(int); ok {
+		params.Set("per_page", fmt.Sprintf("%d", pp))
+	}
+
+	params.Set("page", fmt.Sprintf("%d", page))
+
+	return template.URL(params.Encode())
 }

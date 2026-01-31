@@ -1,0 +1,646 @@
+{{template "layout" .}}
+
+{{define "content"}}
+<style>
+.chart-container { position: relative; height: 250px; }
+.chart-container-sm { position: relative; height: 180px; }
+</style>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3><i class="bi bi-bar-chart-fill me-2"></i>Statistics</h3>
+        <a href="/" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i>Back to Search
+        </a>
+    </div>
+
+    <!-- Global Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3 col-6 mb-3">
+            <div class="card bg-primary text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-subtitle mb-1 text-white-50">Total Files</h6>
+                            <h3 class="card-title mb-0">{{.Stats.TotalFiles}}</h3>
+                        </div>
+                        <i class="bi bi-file-earmark fs-1 opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6 mb-3">
+            <div class="card bg-success text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-subtitle mb-1 text-white-50">Total Directories</h6>
+                            <h3 class="card-title mb-0">{{.Stats.TotalDirs}}</h3>
+                        </div>
+                        <i class="bi bi-folder fs-1 opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6 mb-3">
+            <div class="card bg-info text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-subtitle mb-1 text-white-50">Total Size</h6>
+                            <h3 class="card-title mb-0">{{humanizeBytes .Stats.TotalSize}}</h3>
+                        </div>
+                        <i class="bi bi-hdd fs-1 opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6 mb-3">
+            <div class="card bg-warning text-dark h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-subtitle mb-1 text-muted">Indexes</h6>
+                            <h3 class="card-title mb-0">{{.Stats.IndexCount}}</h3>
+                        </div>
+                        <i class="bi bi-archive fs-1 opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Global Charts Row -->
+    <div class="row mb-4">
+        <!-- File Types by Count (Doughnut) -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-pie-chart me-2"></i>File Types by Count</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="globalExtCountChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Types by Size (Doughnut) -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-pie-chart-fill me-2"></i>File Types by Size</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="globalExtSizeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Size Distribution (Bar) -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-bar-chart me-2"></i>File Size Distribution</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="globalSizeDistChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Second Charts Row -->
+    <div class="row mb-4">
+        <!-- Files by Year (Bar) -->
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-calendar3 me-2"></i>Files by Year</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="globalYearChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Index Comparison (Bar) -->
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-collection me-2"></i>Index Size Comparison</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="indexCompareChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Per-Index Statistics -->
+    <h4 class="mb-3"><i class="bi bi-collection me-2"></i>Statistics by Index</h4>
+
+    {{range $idx, $indexStats := .Stats.IndexStats}}
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <span class="badge bg-success me-2">{{.Name}}</span>
+                    <a href="/browse/{{.Name | urlquery}}?path=" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-folder2-open me-1"></i>Browse
+                    </a>
+                </h5>
+                {{if not .LastScan.IsZero}}
+                <small class="text-muted">
+                    <i class="bi bi-clock me-1"></i>Last scan: {{.LastScan.Format "2006-01-02 15:04:05"}}
+                </small>
+                {{end}}
+            </div>
+        </div>
+        <div class="card-body">
+            <!-- Index Summary Row -->
+            <div class="row mb-3">
+                <div class="col-md-2 col-4 mb-2">
+                    <div class="border rounded p-2 text-center">
+                        <div class="text-muted small">Files</div>
+                        <div class="fw-bold">{{.TotalFiles}}</div>
+                    </div>
+                </div>
+                <div class="col-md-2 col-4 mb-2">
+                    <div class="border rounded p-2 text-center">
+                        <div class="text-muted small">Directories</div>
+                        <div class="fw-bold">{{.TotalDirs}}</div>
+                    </div>
+                </div>
+                <div class="col-md-2 col-4 mb-2">
+                    <div class="border rounded p-2 text-center">
+                        <div class="text-muted small">Total Size</div>
+                        <div class="fw-bold">{{humanizeBytes .TotalSize}}</div>
+                    </div>
+                </div>
+                <div class="col-md-2 col-4 mb-2">
+                    <div class="border rounded p-2 text-center">
+                        <div class="text-muted small">Avg File Size</div>
+                        <div class="fw-bold">{{humanizeBytes .AvgFileSize}}</div>
+                    </div>
+                </div>
+                <div class="col-md-2 col-4 mb-2">
+                    <div class="border rounded p-2 text-center">
+                        <div class="text-muted small">Oldest File</div>
+                        <div class="fw-bold small">{{if not .OldestFile.IsZero}}{{.OldestFile.Format "2006-01-02"}}{{else}}-{{end}}</div>
+                    </div>
+                </div>
+                <div class="col-md-2 col-4 mb-2">
+                    <div class="border rounded p-2 text-center">
+                        <div class="text-muted small">Newest File</div>
+                        <div class="fw-bold small">{{if not .NewestFile.IsZero}}{{.NewestFile.Format "2006-01-02"}}{{else}}-{{end}}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts for this index -->
+            <div class="row mb-3">
+                <div class="col-md-4 mb-3">
+                    <h6 class="text-center"><i class="bi bi-pie-chart me-1"></i>File Types</h6>
+                    <div class="chart-container-sm">
+                        <canvas id="indexExtChart{{$idx}}"></canvas>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <h6 class="text-center"><i class="bi bi-bar-chart me-1"></i>Size Distribution</h6>
+                    <div class="chart-container-sm">
+                        <canvas id="indexSizeChart{{$idx}}"></canvas>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <h6 class="text-center"><i class="bi bi-calendar3 me-1"></i>Files by Year</h6>
+                    <div class="chart-container-sm">
+                        <canvas id="indexYearChart{{$idx}}"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Top 10 Largest Files -->
+                {{if .LargestFiles}}
+                <div class="col-lg-6 mb-3">
+                    <h6><i class="bi bi-file-earmark-arrow-up me-1"></i>Top 10 Largest Files</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Name</th>
+                                    <th class="text-end">Size</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{range $i, $file := .LargestFiles}}
+                                <tr>
+                                    <td class="text-muted">{{add $i 1}}</td>
+                                    <td>
+                                        <a href="/download/{{$file.IndexName}}-{{$file.ID}}" target="_blank" class="text-decoration-none text-truncate d-inline-block" style="max-width: 250px;" title="{{$file.Path}}">
+                                            {{$file.Name}}
+                                        </a>
+                                    </td>
+                                    <td class="text-end fw-bold">{{humanizeBytes $file.Size}}</td>
+                                </tr>
+                                {{end}}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {{end}}
+
+                <!-- Recent Files -->
+                {{if .RecentFiles}}
+                <div class="col-lg-6 mb-3">
+                    <h6><i class="bi bi-clock-history me-1"></i>Recently Modified Files</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th class="text-end">Size</th>
+                                    <th class="text-end">Modified</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{range .RecentFiles}}
+                                <tr>
+                                    <td>
+                                        <a href="/download/{{.IndexName}}-{{.ID}}" target="_blank" class="text-decoration-none text-truncate d-inline-block" style="max-width: 200px;" title="{{.Path}}">
+                                            {{.Name}}
+                                        </a>
+                                    </td>
+                                    <td class="text-end">{{humanizeBytes .Size}}</td>
+                                    <td class="text-end small">{{.ModTime.Format "2006-01-02 15:04"}}</td>
+                                </tr>
+                                {{end}}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {{end}}
+            </div>
+        </div>
+    </div>
+    {{end}}
+</div>
+
+<script src="/assets/chart.js"></script>
+<script>
+// Disable animations globally for performance
+Chart.defaults.animation = false;
+Chart.defaults.responsive = true;
+Chart.defaults.maintainAspectRatio = false;
+
+// Color palette
+const colors = [
+    'rgba(54, 162, 235, 0.8)',
+    'rgba(255, 99, 132, 0.8)',
+    'rgba(255, 206, 86, 0.8)',
+    'rgba(75, 192, 192, 0.8)',
+    'rgba(153, 102, 255, 0.8)',
+    'rgba(255, 159, 64, 0.8)',
+    'rgba(199, 199, 199, 0.8)',
+    'rgba(83, 102, 255, 0.8)',
+    'rgba(255, 99, 255, 0.8)',
+    'rgba(99, 255, 132, 0.8)',
+    'rgba(255, 182, 193, 0.8)',
+    'rgba(144, 238, 144, 0.8)',
+    'rgba(173, 216, 230, 0.8)',
+    'rgba(255, 218, 185, 0.8)',
+    'rgba(221, 160, 221, 0.8)'
+];
+
+const borderColors = colors.map(c => c.replace('0.8', '1'));
+
+// Helper function for humanizing bytes
+function humanizeBytes(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Helper function for humanizing numbers (1K, 1M, etc.)
+function humanizeNumber(num) {
+    if (num === 0) return '0';
+    if (num < 1000) return num.toString();
+    const k = 1000;
+    const sizes = ['', 'K', 'M', 'B'];
+    const i = Math.floor(Math.log(num) / Math.log(k));
+    return parseFloat((num / Math.pow(k, i)).toFixed(1)) + sizes[i];
+}
+
+// Global Extensions by Count Chart
+{{if .Stats.TopExtensions}}
+new Chart(document.getElementById('globalExtCountChart'), {
+    type: 'doughnut',
+    data: {
+        labels: [{{range $i, $ext := .Stats.TopExtensions}}{{if $i}},{{end}}'{{if .Extension}}{{.Extension}}{{else}}(no ext){{end}}'{{end}}],
+        datasets: [{
+            data: [{{range $i, $ext := .Stats.TopExtensions}}{{if $i}},{{end}}{{.Count}}{{end}}],
+            backgroundColor: colors,
+            borderColor: borderColors,
+            borderWidth: 1
+        }]
+    },
+    options: {
+        plugins: {
+            legend: {
+                position: 'right',
+                labels: { boxWidth: 12, font: { size: 10 } }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return context.label + ': ' + humanizeNumber(context.raw);
+                    }
+                }
+            }
+        }
+    }
+});
+{{end}}
+
+// Global Extensions by Size Chart
+{{if .Stats.TopExtBySize}}
+new Chart(document.getElementById('globalExtSizeChart'), {
+    type: 'doughnut',
+    data: {
+        labels: [{{range $i, $ext := .Stats.TopExtBySize}}{{if $i}},{{end}}'{{if .Extension}}{{.Extension}}{{else}}(no ext){{end}}'{{end}}],
+        datasets: [{
+            data: [{{range $i, $ext := .Stats.TopExtBySize}}{{if $i}},{{end}}{{.Size}}{{end}}],
+            backgroundColor: colors,
+            borderColor: borderColors,
+            borderWidth: 1
+        }]
+    },
+    options: {
+        plugins: {
+            legend: {
+                position: 'right',
+                labels: { boxWidth: 12, font: { size: 10 } }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return context.label + ': ' + humanizeBytes(context.raw);
+                    }
+                }
+            }
+        }
+    }
+});
+{{end}}
+
+// Global Size Distribution Chart
+{{if .Stats.SizeDistribution}}
+new Chart(document.getElementById('globalSizeDistChart'), {
+    type: 'bar',
+    data: {
+        labels: [{{range $i, $sd := .Stats.SizeDistribution}}{{if $i}},{{end}}'{{.Label}}'{{end}}],
+        datasets: [{
+            label: 'Files',
+            data: [{{range $i, $sd := .Stats.SizeDistribution}}{{if $i}},{{end}}{{.Count}}{{end}}],
+            backgroundColor: 'rgba(54, 162, 235, 0.8)',
+            borderColor: 'rgba(54, 162, 235, 1)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return humanizeNumber(context.raw) + ' files';
+                    }
+                }
+            }
+        },
+        scales: {
+            x: { ticks: { font: { size: 9 }, maxRotation: 45 } },
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) { return humanizeNumber(value); }
+                }
+            }
+        }
+    }
+});
+{{end}}
+
+// Global Year Distribution Chart
+{{if .Stats.YearDistribution}}
+new Chart(document.getElementById('globalYearChart'), {
+    type: 'bar',
+    data: {
+        labels: [{{range $i, $yd := .Stats.YearDistribution}}{{if $i}},{{end}}'{{.Year}}'{{end}}],
+        datasets: [{
+            label: 'Files',
+            data: [{{range $i, $yd := .Stats.YearDistribution}}{{if $i}},{{end}}{{.Count}}{{end}}],
+            backgroundColor: 'rgba(75, 192, 192, 0.8)',
+            borderColor: 'rgba(75, 192, 192, 1)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return humanizeNumber(context.raw) + ' files';
+                    }
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) { return humanizeNumber(value); }
+                }
+            }
+        }
+    }
+});
+{{end}}
+
+// Index Comparison Chart
+{{if .Stats.IndexStats}}
+new Chart(document.getElementById('indexCompareChart'), {
+    type: 'bar',
+    data: {
+        labels: [{{range $i, $idx := .Stats.IndexStats}}{{if $i}},{{end}}'{{.Name}}'{{end}}],
+        datasets: [{
+            label: 'Size',
+            data: [{{range $i, $idx := .Stats.IndexStats}}{{if $i}},{{end}}{{.TotalSize}}{{end}}],
+            backgroundColor: 'rgba(255, 99, 132, 0.8)',
+            borderColor: 'rgba(255, 99, 132, 1)',
+            borderWidth: 1,
+            yAxisID: 'y'
+        }, {
+            label: 'Files',
+            data: [{{range $i, $idx := .Stats.IndexStats}}{{if $i}},{{end}}{{.TotalFiles}}{{end}}],
+            backgroundColor: 'rgba(54, 162, 235, 0.8)',
+            borderColor: 'rgba(54, 162, 235, 1)',
+            borderWidth: 1,
+            yAxisID: 'y1'
+        }]
+    },
+    options: {
+        plugins: {
+            legend: { position: 'top' },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        if (context.dataset.label === 'Size') {
+                            return 'Size: ' + humanizeBytes(context.raw);
+                        }
+                        return 'Files: ' + humanizeNumber(context.raw);
+                    }
+                }
+            }
+        },
+        scales: {
+            y: {
+                type: 'linear',
+                position: 'left',
+                title: { display: true, text: 'Size' },
+                ticks: {
+                    callback: function(value) { return humanizeBytes(value); }
+                }
+            },
+            y1: {
+                type: 'linear',
+                position: 'right',
+                title: { display: true, text: 'Files' },
+                grid: { drawOnChartArea: false },
+                ticks: {
+                    callback: function(value) { return humanizeNumber(value); }
+                }
+            }
+        }
+    }
+});
+{{end}}
+
+// Per-Index Charts
+{{range $idx, $indexStats := .Stats.IndexStats}}
+
+// Index Extensions Chart
+{{if .TopExtensions}}
+new Chart(document.getElementById('indexExtChart{{$idx}}'), {
+    type: 'doughnut',
+    data: {
+        labels: [{{range $i, $ext := .TopExtensions}}{{if $i}},{{end}}'{{if .Extension}}{{.Extension}}{{else}}(no ext){{end}}'{{end}}],
+        datasets: [{
+            data: [{{range $i, $ext := .TopExtensions}}{{if $i}},{{end}}{{.Count}}{{end}}],
+            backgroundColor: colors,
+            borderWidth: 1
+        }]
+    },
+    options: {
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return context.label + ': ' + humanizeNumber(context.raw);
+                    }
+                }
+            }
+        }
+    }
+});
+{{end}}
+
+// Index Size Distribution Chart
+{{if .SizeDistribution}}
+new Chart(document.getElementById('indexSizeChart{{$idx}}'), {
+    type: 'bar',
+    data: {
+        labels: [{{range $i, $sd := .SizeDistribution}}{{if $i}},{{end}}'{{.Label}}'{{end}}],
+        datasets: [{
+            data: [{{range $i, $sd := .SizeDistribution}}{{if $i}},{{end}}{{.Count}}{{end}}],
+            backgroundColor: 'rgba(54, 162, 235, 0.8)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return humanizeNumber(context.raw) + ' files';
+                    }
+                }
+            }
+        },
+        scales: {
+            x: { ticks: { font: { size: 7 }, maxRotation: 45 } },
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) { return humanizeNumber(value); }
+                }
+            }
+        }
+    }
+});
+{{end}}
+
+// Index Year Chart
+{{if .YearDistribution}}
+new Chart(document.getElementById('indexYearChart{{$idx}}'), {
+    type: 'bar',
+    data: {
+        labels: [{{range $i, $yd := .YearDistribution}}{{if $i}},{{end}}'{{.Year}}'{{end}}],
+        datasets: [{
+            data: [{{range $i, $yd := .YearDistribution}}{{if $i}},{{end}}{{.Count}}{{end}}],
+            backgroundColor: 'rgba(75, 192, 192, 0.8)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return humanizeNumber(context.raw) + ' files';
+                    }
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) { return humanizeNumber(value); }
+                }
+            }
+        }
+    }
+});
+{{end}}
+
+{{end}}
+</script>
+{{end}}

@@ -1,0 +1,10 @@
+server:
+  port: 18080
+
+indexes:
+  - name: "test-files"
+    db_path: "./e2e/testdata/data/test.db"
+    source_engine: "local"
+    refresh_interval: 0
+    root_paths:
+      - "./e2e/testdata/files"

@@ -24,13 +24,17 @@
 
 ## Screenshots
 
-| Start Page | File Browser |
-|------------|--------------|
-| ![Start Page](screenshoots/start-page.png) | ![File Browser](screenshoots/file-browser.png) |
+### Start Page
+![Start Page](screenshoots/start-page.png)
 
-| Advanced Filtering | Statistics |
-|--------------------|------------|
-| ![Advanced Filtering](screenshoots/advanced-filtering.png) | ![Statistics](screenshoots/detailed-stats.png) |
+### File Browser
+![File Browser](screenshoots/file-browser.png)
+
+### Advanced Filtering
+![Advanced Filtering](screenshoots/advanced-filtering.png)
+
+### Statistics
+![Statistics](screenshoots/detailed-stats.png)
 
 ## Quick Start
 

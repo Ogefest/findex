@@ -11,7 +11,7 @@ func Run(configPath, migrationsPath string) error {
 	if err := InitIndexes(cfg, migrationsPath); err != nil {
 		return err
 	}
-	if err := ScanIndexes(cfg); err != nil {
+	if err := ScanIndexes(cfg, migrationsPath); err != nil {
 		return err
 	}
 

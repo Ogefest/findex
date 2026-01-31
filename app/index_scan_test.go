@@ -132,7 +132,7 @@ func TestFinalizeIndex(t *testing.T) {
 		t.Fatalf("failed to insert test files: %v", err)
 	}
 
-	err = finalizeIndex(db)
+	err = finalizeIndex(db, "test-index")
 	if err != nil {
 		t.Fatalf("finalizeIndex failed: %v", err)
 	}
@@ -302,7 +302,7 @@ func TestLocalSourceWalk(t *testing.T) {
 	}
 
 	t.Run("walk all files", func(t *testing.T) {
-		source := NewLocalSource("test-index", []string{tmpDir}, nil)
+		source := NewLocalSource("test-index", []string{tmpDir}, nil, 0)
 
 		var foundFiles []models.FileRecord
 		for f := range source.Walk() {
@@ -331,7 +331,7 @@ func TestLocalSourceWalk(t *testing.T) {
 
 	t.Run("walk with exclude paths", func(t *testing.T) {
 		excludeDir := filepath.Join(tmpDir, "images")
-		source := NewLocalSource("test-index", []string{tmpDir}, []string{excludeDir})
+		source := NewLocalSource("test-index", []string{tmpDir}, []string{excludeDir}, 0)
 
 		var foundFiles []models.FileRecord
 		for f := range source.Walk() {
@@ -347,7 +347,7 @@ func TestLocalSourceWalk(t *testing.T) {
 	})
 
 	t.Run("walk non-existent path", func(t *testing.T) {
-		source := NewLocalSource("test-index", []string{"/nonexistent/path"}, nil)
+		source := NewLocalSource("test-index", []string{"/nonexistent/path"}, nil, 0)
 
 		var foundFiles []models.FileRecord
 		for f := range source.Walk() {
@@ -388,9 +388,9 @@ func TestScanSourceIntegration(t *testing.T) {
 	defer cleanup()
 
 	// Create source and scan
-	source := NewLocalSource("test-index", []string{tmpDir}, nil)
+	source := NewLocalSource("test-index", []string{tmpDir}, nil, 0)
 
-	err = scanSource(context.Background(), db, source)
+	err = scanSource(context.Background(), db, source, "test-index")
 	if err != nil {
 		t.Fatalf("scanSource failed: %v", err)
 	}

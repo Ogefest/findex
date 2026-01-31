@@ -1,12 +1,40 @@
 package app
 
 import (
+	"database/sql"
+	"encoding/json"
 	"time"
 
 	"github.com/ogefest/findex/models"
 )
 
 func (s *Searcher) GetIndexStats(indexName string) (*models.IndexStats, error) {
+	db := s.dbs[indexName]
+
+	// Try to get cached stats first
+	if stats, err := getCachedStats(db); err == nil && stats != nil {
+		return stats, nil
+	}
+
+	// Fallback to calculating stats on-demand
+	return s.calculateIndexStats(indexName)
+}
+
+func getCachedStats(db *sql.DB) (*models.IndexStats, error) {
+	var jsonData string
+	err := db.QueryRow(`SELECT value FROM metadata WHERE key = 'stats_cache'`).Scan(&jsonData)
+	if err != nil {
+		return nil, err
+	}
+
+	var stats models.IndexStats
+	if err := json.Unmarshal([]byte(jsonData), &stats); err != nil {
+		return nil, err
+	}
+	return &stats, nil
+}
+
+func (s *Searcher) calculateIndexStats(indexName string) (*models.IndexStats, error) {
 	db := s.dbs[indexName]
 	stats := &models.IndexStats{Name: indexName}
 

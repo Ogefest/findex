@@ -7,6 +7,7 @@ type IndexConfig struct {
 	RootPaths       []string `mapstructure:"root_paths"`
 	ExcludePaths    []string `mapstructure:"exclude_paths"`
 	RefreshInterval int      `mapstructure:"refresh_interval"`
+	ScanWorkers     int      `mapstructure:"scan_workers"` // 0 = auto (CPU * 2)
 }
 
 type ServerConfig struct {

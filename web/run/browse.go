@@ -18,29 +18,37 @@ func (webapp *WebApp) browse() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		index := chi.URLParam(r, "index")
-		searcher, err := app.NewSearcher(webapp.IndexConfig)
-		if err != nil {
-			log.Printf("Unable to create searcher: %v\n", err)
-			http.Error(w, "internal error", http.StatusInternalServerError)
-			return
-		}
-		path := r.URL.Query().Get("path")
 		if index == "" {
-			log.Printf("Invalid index:%s or path: %s\n", index, path)
-			http.Error(w, "bad request", http.StatusBadRequest)
+			webapp.renderError(w, http.StatusBadRequest, "Index name is required.")
 			return
 		}
 
-		itemList, err := searcher.GetDirectoryContent(index, path)
-		if err != nil {
-			log.Printf("Unable to get dir content for path %s in index %s", path, index)
-			http.Error(w, "internal error", http.StatusInternalServerError)
+		// Check if index exists
+		if webapp.getIndexByName(index) == nil {
+			webapp.renderError(w, http.StatusNotFound, "The requested index does not exist.")
 			return
 		}
+
+		searcher, err := app.NewSearcher(webapp.IndexConfig)
+		if err != nil {
+			log.Printf("Unable to create searcher: %v\n", err)
+			webapp.renderError(w, http.StatusInternalServerError, "")
+			return
+		}
+
+		path := r.URL.Query().Get("path")
+
+		itemList, err := searcher.GetDirectoryContent(index, path)
+		if err != nil {
+			log.Printf("Unable to get dir content for path %s in index %s: %v", path, index, err)
+			webapp.renderError(w, http.StatusInternalServerError, "")
+			return
+		}
+
 		currentDirInfo, err := searcher.GetDirectorySize(index, path)
 		if err != nil {
-			log.Printf("Unable to get current dir info %s %s\n", index, path)
-			http.Error(w, "internal error", http.StatusInternalServerError)
+			log.Printf("Unable to get current dir info %s %s: %v\n", index, path, err)
+			webapp.renderError(w, http.StatusInternalServerError, "")
 			return
 		}
 
@@ -69,8 +77,8 @@ func (webapp *WebApp) browse() http.HandlerFunc {
 
 		err = webapp.TemplateCache["browse.html"].Execute(w, data)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			log.Printf("Template error: %v", err)
+			webapp.renderError(w, http.StatusInternalServerError, "")
 		}
 	}
-
 }

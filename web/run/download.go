@@ -18,7 +18,7 @@ func (webapp *WebApp) download() http.HandlerFunc {
 		fileIdStr := chi.URLParam(r, "id")
 		fileId, err := strconv.ParseInt(fileIdStr, 10, 64)
 		if err != nil {
-			http.Error(w, "invalid ID", http.StatusBadRequest)
+			webapp.renderError(w, http.StatusBadRequest, "Invalid file ID provided.")
 			return
 		}
 		index := chi.URLParam(r, "index")
@@ -26,14 +26,14 @@ func (webapp *WebApp) download() http.HandlerFunc {
 		searcher, err := app.NewSearcher(webapp.IndexConfig)
 		if err != nil {
 			log.Printf("Unable to create searcher: %v\n", err)
-			http.Error(w, "internal error", http.StatusInternalServerError)
+			webapp.renderError(w, http.StatusInternalServerError, "")
 			return
 		}
 
 		fileInfo, err := searcher.GetFileByID(index, fileId)
-		if err != nil {
+		if err != nil || fileInfo == nil {
 			log.Printf("File not found: %v\n", err)
-			http.Error(w, "file not found", http.StatusNotFound)
+			webapp.renderError(w, http.StatusNotFound, "The requested file was not found in the index.")
 			return
 		}
 
@@ -43,7 +43,7 @@ func (webapp *WebApp) download() http.HandlerFunc {
 		file, err := os.Open(fullPath)
 		if err != nil {
 			log.Printf("Cannot open file: %v\n", err)
-			http.Error(w, "cannot open file", http.StatusInternalServerError)
+			webapp.renderError(w, http.StatusNotFound, "The file exists in the index but could not be found on disk.")
 			return
 		}
 		defer file.Close()

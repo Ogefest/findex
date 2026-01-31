@@ -12,7 +12,7 @@ func (webapp *WebApp) stats() http.HandlerFunc {
 		searcher, err := app.NewSearcher(webapp.IndexConfig)
 		if err != nil {
 			log.Printf("Unable to create searcher: %v\n", err)
-			http.Error(w, "internal error", http.StatusInternalServerError)
+			webapp.renderError(w, http.StatusInternalServerError, "")
 			return
 		}
 		defer searcher.Close()
@@ -20,7 +20,7 @@ func (webapp *WebApp) stats() http.HandlerFunc {
 		globalStats, err := searcher.GetGlobalStats()
 		if err != nil {
 			log.Printf("Unable to get global stats: %v\n", err)
-			http.Error(w, "internal error", http.StatusInternalServerError)
+			webapp.renderError(w, http.StatusInternalServerError, "")
 			return
 		}
 
@@ -31,7 +31,7 @@ func (webapp *WebApp) stats() http.HandlerFunc {
 		err = webapp.TemplateCache["stats.html"].Execute(w, data)
 		if err != nil {
 			log.Printf("Template error: %v\n", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			webapp.renderError(w, http.StatusInternalServerError, "")
 		}
 	}
 }

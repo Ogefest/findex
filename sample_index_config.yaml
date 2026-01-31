@@ -1,9 +1,0 @@
-indexes:
-  - name: "movies"
-    db_path: "./data/movies.db"
-    source_engine: "local"
-    refresh_interval: 86400
-    root_paths:
-      - "/some/directory/with/movies/"
-    exclude_paths:
-      - "/some/directory/with/movies/not-this-one/"

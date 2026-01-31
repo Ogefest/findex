@@ -1,0 +1,32 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Build artifacts
+findex
+webserver
+*.exe
+
+# Demo and test data
+demo/
+*_test.go
+testdata/
+
+# Documentation
+*.md
+LICENSE
+
+# Local config (users should create their own)
+config.yaml
+index_config.yaml
+
+# Temporary files
+*.tmp
+*.log
+.DS_Store

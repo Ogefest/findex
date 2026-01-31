@@ -17,5 +17,7 @@ func router(webapp *WebApp) http.Handler {
 	fs := http.FileServer(http.Dir("web/assets"))
 	r.Handle("/assets/*", http.StripPrefix("/assets/", fs))
 
+	r.NotFound(webapp.notFoundHandler())
+
 	return r
 }

@@ -65,13 +65,12 @@ func (s *Searcher) Search(query string, filter *FileFilter, limitPerIndex int) (
 }
 
 func (s *Searcher) GetFileByID(indexName string, id int64) (*models.FileRecord, error) {
-	sqlQuery := fmt.Sprintf(`
-        SELECT f.id, f.path, f.name, f.dir, f.ext, f.size, f.mod_time, f.is_dir, f.index_name
-        FROM files f
-        JOIN files_fts ft ON ft.rowid = f.rowid
-        WHERE f.id = %d
-        LIMIT 1`, id)
-	rows, err := s.dbs[indexName].Query(sqlQuery)
+	sqlQuery := `
+        SELECT id, path, name, dir, ext, size, mod_time, is_dir, index_name
+        FROM files
+        WHERE id = ?
+        LIMIT 1`
+	rows, err := s.dbs[indexName].Query(sqlQuery, id)
 	if err != nil {
 		return nil, err
 	}

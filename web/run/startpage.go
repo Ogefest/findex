@@ -54,7 +54,7 @@ func (webapp *WebApp) startPage() http.HandlerFunc {
 			searcher, err := app.NewSearcher(idxPtrs)
 			if err != nil {
 				log.Printf("Unable to create searcher %v\n", err)
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				webapp.renderError(w, http.StatusInternalServerError, "")
 				return
 			}
 
@@ -114,7 +114,8 @@ func (webapp *WebApp) startPage() http.HandlerFunc {
 
 		err := webapp.TemplateCache["startpage.html"].Execute(w, data)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			log.Printf("Template error: %v\n", err)
+			webapp.renderError(w, http.StatusInternalServerError, "")
 		}
 	}
 }

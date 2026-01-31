@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>{{.Title}} - FIndex</title>
+    <link href="/assets/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/assets/icons/bootstrap-icons.min.css">
+    <style>
+      body {
+        background-color: #f8f9fa;
+      }
+      .error-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .error-code {
+        font-size: 8rem;
+        font-weight: 700;
+        color: #dee2e6;
+        line-height: 1;
+      }
+      .error-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="error-container">
+      <div class="text-center">
+        <div class="error-code">{{.Code}}</div>
+        <div class="error-icon text-{{.Color}}">
+          <i class="bi bi-{{.Icon}}"></i>
+        </div>
+        <h1 class="h3 mb-3">{{.Title}}</h1>
+        <p class="text-muted mb-4">{{.Message}}</p>
+        <div class="d-flex gap-2 justify-content-center">
+          <a href="/" class="btn btn-primary">
+            <i class="bi bi-house-door me-1"></i>Go Home
+          </a>
+          <button onclick="history.back()" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Go Back
+          </button>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -87,7 +87,16 @@ func (webapp *WebApp) InitTemplates() {
 			continue
 		}
 
-		ts, err := template.New(name).Funcs(funcMap).ParseFiles(page, "web/templates/layout.html")
+		var ts *template.Template
+		var err error
+
+		// Error template is standalone (no layout)
+		if name == "error.html" {
+			ts, err = template.New(name).Funcs(funcMap).ParseFiles(page)
+		} else {
+			ts, err = template.New(name).Funcs(funcMap).ParseFiles(page, "web/templates/layout.html")
+		}
+
 		if err != nil {
 			log.Fatalf("failed to parse template %s: %v", name, err)
 		}

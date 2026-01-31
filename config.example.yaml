@@ -1,0 +1,67 @@
+# =============================================================================
+# FIndex Configuration
+# =============================================================================
+# Copy this file to config.yaml and adjust to your needs:
+#   cp config.example.yaml config.yaml
+#
+# For Docker users, mount this file to /app/config.yaml
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Server Settings
+# -----------------------------------------------------------------------------
+server:
+  # Port on which the web interface will be available
+  # Default: 8080
+  port: 8080
+
+# -----------------------------------------------------------------------------
+# Index Definitions
+# -----------------------------------------------------------------------------
+# Each index represents a searchable collection of files.
+# You can define multiple indexes to organize different file collections.
+#
+# Index fields:
+#   name             - Unique identifier displayed in the UI (required)
+#   db_path          - Path to SQLite database file (required)
+#   source_engine    - Storage backend type: "local" (required)
+#   root_paths       - List of directories to index (required, at least one)
+#   exclude_paths    - List of directories to skip (optional)
+#   refresh_interval - Re-index interval in seconds (optional, default: 86400)
+#
+# -----------------------------------------------------------------------------
+indexes:
+  # Example: Index your documents
+  - name: "documents"
+    db_path: "./data/documents.db"
+    source_engine: "local"
+    refresh_interval: 86400  # 24 hours
+    root_paths:
+      - "/path/to/your/documents/"
+    exclude_paths:
+      - "/path/to/your/documents/private/"
+      - "/path/to/your/documents/temp/"
+
+  # Example: Index media files
+  # - name: "media"
+  #   db_path: "./data/media.db"
+  #   source_engine: "local"
+  #   refresh_interval: 604800  # 7 days
+  #   root_paths:
+  #     - "/path/to/movies/"
+  #     - "/path/to/music/"
+  #     - "/path/to/photos/"
+  #   exclude_paths:
+  #     - "/path/to/movies/downloads-in-progress/"
+
+  # Example: Index code projects
+  # - name: "code"
+  #   db_path: "./data/code.db"
+  #   source_engine: "local"
+  #   refresh_interval: 3600  # 1 hour
+  #   root_paths:
+  #     - "/home/user/projects/"
+  #   exclude_paths:
+  #     - "/home/user/projects/node_modules/"
+  #     - "/home/user/projects/.git/"
+  #     - "/home/user/projects/vendor/"

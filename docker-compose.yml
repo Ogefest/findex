@@ -1,0 +1,53 @@
+services:
+  findex:
+    build:
+      context: .
+      args:
+        VERSION: ${VERSION:-dev}
+        COMMIT: ${COMMIT:-unknown}
+        BUILD_DATE: ${BUILD_DATE:-unknown}
+    image: findex:latest
+    container_name: findex
+    restart: unless-stopped
+    ports:
+      - "${FINDEX_PORT:-8080}:8080"
+    volumes:
+      # Persistent data storage for SQLite databases
+      - findex_data:/app/data
+      # Mount config file (create your own based on config.example.yaml)
+      - ./config.yaml:/app/config.yaml:ro
+      # Optional: mount directories you want to index (read-only)
+      # - /path/to/your/files:/data/files:ro
+      # - /path/to/your/media:/data/media:ro
+    environment:
+      - TZ=${TZ:-UTC}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+  # Optional: Run indexer on schedule
+  findex-indexer:
+    build:
+      context: .
+    image: findex:latest
+    container_name: findex-indexer
+    profiles:
+      - indexer
+    volumes:
+      - findex_data:/app/data
+      - ./config.yaml:/app/config.yaml:ro
+      # Mount same directories as main service
+      # - /path/to/your/files:/data/files:ro
+      # - /path/to/your/media:/data/media:ro
+    environment:
+      - TZ=${TZ:-UTC}
+    entrypoint: ["/app/findex", "-config", "/app/config.yaml"]
+    # Run once and exit - use with cron or manually
+    restart: "no"
+
+volumes:
+  findex_data:
+    name: findex_data

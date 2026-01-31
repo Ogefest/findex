@@ -1,21 +1,18 @@
 package main
 
 import (
+	"flag"
 	"log"
-	"os"
 
 	"github.com/ogefest/findex/app"
 )
 
 func main() {
-	configPath := "./index_config.yaml"
-	migrationsPath := "init.sql"
+	configPath := flag.String("config", "index_config.yaml", "Path to index configuration file")
+	migrationsPath := flag.String("migrations", "init.sql", "Path to SQL migrations file")
+	flag.Parse()
 
-	if len(os.Args) > 1 {
-		configPath = os.Args[1]
-	}
-
-	if err := app.Run(configPath, migrationsPath); err != nil {
+	if err := app.Run(*configPath, *migrationsPath); err != nil {
 		log.Fatalf("error: %v", err)
 	}
 }

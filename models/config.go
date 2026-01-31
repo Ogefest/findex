@@ -9,6 +9,11 @@ type IndexConfig struct {
 	RefreshInterval int      `mapstructure:"refresh_interval"`
 }
 
+type ServerConfig struct {
+	Port int `mapstructure:"port"`
+}
+
 type AppConfig struct {
+	Server  ServerConfig  `mapstructure:"server"`
 	Indexes []IndexConfig `mapstructure:"indexes"`
 }

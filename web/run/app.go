@@ -18,16 +18,24 @@ import (
 type WebApp struct {
 	Router        http.Handler
 	TemplateCache map[string]*template.Template
+	AppConfig     *models.AppConfig
 	IndexConfig   []*models.IndexConfig
 	ActiveIndexes []string
+	ConfigPath    string
 }
 
 func (webapp *WebApp) ReloadIndexConfiguration() {
-	cfg, err := app.LoadConfig("index_config.yaml")
+	configPath := webapp.ConfigPath
+	if configPath == "" {
+		configPath = "index_config.yaml"
+	}
+	cfg, err := app.LoadConfig(configPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
 		os.Exit(1)
 	}
+
+	webapp.AppConfig = cfg
 
 	activeIndexes := make(map[string]bool)
 	for i := range cfg.Indexes {
@@ -38,6 +46,14 @@ func (webapp *WebApp) ReloadIndexConfiguration() {
 	sort.Strings(webapp.ActiveIndexes)
 
 	log.Printf("Indexes loaded %v\n", webapp.ActiveIndexes)
+}
+
+func (webapp *WebApp) GetListenAddr() string {
+	port := 8080
+	if webapp.AppConfig != nil && webapp.AppConfig.Server.Port > 0 {
+		port = webapp.AppConfig.Server.Port
+	}
+	return fmt.Sprintf(":%d", port)
 }
 
 func (webapp *WebApp) GetRouter() http.Handler {

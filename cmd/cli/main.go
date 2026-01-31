@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	// Parse command-line arguments
+	configPath := flag.String("config", "index_config.yaml", "Path to index configuration file")
 	query := flag.String("q", "", "Search query")
 	flag.Parse()
 
@@ -20,8 +20,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Load configuration
-	cfg, err := app.LoadConfig("index_config.yaml")
+	cfg, err := app.LoadConfig(*configPath)
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
@@ -37,13 +36,11 @@ func main() {
 	}
 	defer searcher.Close()
 
-	// Perform search
-	results, err := searcher.Search(*query, nil, 50) // No filter, limit 50 per index
+	results, err := searcher.Search(*query, nil, 50)
 	if err != nil {
 		log.Fatalf("Search error: %v", err)
 	}
 
-	// Print file paths
 	for _, result := range results {
 		fmt.Println(result.Path)
 	}

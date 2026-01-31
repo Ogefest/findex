@@ -1,0 +1,17 @@
+server:
+  port: 8080
+
+indexes:
+  - name: "documents"
+    db_path: "./demo/data/documents.db"
+    source_engine: "local"
+    refresh_interval: 86400
+    root_paths:
+      - "/data/documents"
+
+  - name: "media"
+    db_path: "./demo/data/media.db"
+    source_engine: "local"
+    refresh_interval: 86400
+    root_paths:
+      - "/data/media"

@@ -31,6 +31,7 @@ func (webapp *WebApp) download() http.HandlerFunc {
 			webapp.renderError(w, http.StatusInternalServerError, "")
 			return
 		}
+		defer searcher.Close()
 
 		fileInfo, err := searcher.GetFileByID(index, fileId)
 		if err != nil || fileInfo == nil {

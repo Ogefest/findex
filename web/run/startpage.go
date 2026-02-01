@@ -57,6 +57,7 @@ func (webapp *WebApp) startPage() http.HandlerFunc {
 				webapp.renderError(w, http.StatusInternalServerError, "")
 				return
 			}
+			defer searcher.Close()
 
 			// Get more results for pagination
 			allResults, err := searcher.Search(query, filter, 1000)

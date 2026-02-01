@@ -35,6 +35,7 @@ func (webapp *WebApp) browse() http.HandlerFunc {
 			webapp.renderError(w, http.StatusInternalServerError, "")
 			return
 		}
+		defer searcher.Close()
 
 		path := r.URL.Query().Get("path")
 

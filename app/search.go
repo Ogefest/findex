@@ -30,16 +30,16 @@ type Searcher struct {
 func NewSearcher(indexes []*models.IndexConfig) (*Searcher, error) {
 	dbs := make(map[string]*sql.DB)
 	for _, idx := range indexes {
-		dsn := fmt.Sprintf("file:%s?mode=ro", idx.DBPath)
-		db, err := sql.Open("sqlite", dsn)
+		db, err := sql.Open("sqlite", idx.DBPath)
 		if err != nil {
 			for _, d := range dbs {
 				d.Close()
 			}
 			return nil, fmt.Errorf("failed to open db %s: %w", idx.DBPath, err)
 		}
-		q := `PRAGMA case_sensitive_like = ON;`
-		db.Exec(q)
+		db.Exec(`PRAGMA case_sensitive_like = ON`)
+		db.Exec(`PRAGMA journal_mode = WAL`)
+		db.Exec(`PRAGMA busy_timeout = 5000`)
 
 		dbs[idx.Name] = db
 	}
@@ -148,11 +148,27 @@ func (s *Searcher) GetDirectoryContent(indexName string, path string) ([]models.
 		f.IsDir = isDir != 0
 
 		if f.IsDir {
-			// Use cached directory size
+			// Use cached directory size, calculate and cache if not present
 			var cachedSize int64
 			err := s.dbs[indexName].QueryRow(`SELECT total_size FROM dir_sizes WHERE path = ?`, f.Path).Scan(&cachedSize)
 			if err == nil {
 				f.Size = cachedSize
+			} else if err == sql.ErrNoRows {
+				// Calculate and cache on demand
+				var size int64
+				var count int64
+				calcErr := s.dbs[indexName].QueryRow(`
+					SELECT COALESCE(SUM(size), 0), COUNT(*)
+					FROM files
+					WHERE path LIKE ? AND is_dir = 0
+				`, f.Path+"/%").Scan(&size, &count)
+				if calcErr == nil {
+					f.Size = size
+					s.dbs[indexName].Exec(`
+						INSERT OR REPLACE INTO dir_sizes (path, total_size, file_count)
+						VALUES (?, ?, ?)
+					`, f.Path, size, count)
+				}
 			}
 		}
 
@@ -169,32 +185,42 @@ func (s *Searcher) GetDirectoryContent(indexName string, path string) ([]models.
 }
 
 func (s *Searcher) GetDirectorySize(indexName string, path string) (models.DirInfo, error) {
-
 	log.Printf("Dir size for %s %s\n", indexName, path)
 	var result = models.DirInfo{}
 
 	if path == "" {
-		sql := "SELECT SUM(size), COUNT(*) FROM files"
-		err := s.dbs[indexName].QueryRow(sql).Scan(&result.Size, &result.Files)
+		sqlQ := "SELECT SUM(size), COUNT(*) FROM files WHERE is_dir = 0"
+		err := s.dbs[indexName].QueryRow(sqlQ).Scan(&result.Size, &result.Files)
 		if err != nil {
 			return models.DirInfo{}, err
 		}
-	} else {
-		q := `PRAGMA case_sensitive_like = ON;`
-		s.dbs[indexName].Exec(q)
-
-		sql := `
-		SELECT SUM(size), COUNT(*)
-		FROM files
-		WHERE path LIKE ?
-		AND is_dir = 0
-	`
-
-		err := s.dbs[indexName].QueryRow(sql, path+"/%").Scan(&result.Size, &result.Files)
-		if err != nil {
-			return models.DirInfo{}, err
-		}
+		return result, nil
 	}
+
+	// Try cache first
+	err := s.dbs[indexName].QueryRow(`
+		SELECT total_size, file_count FROM dir_sizes WHERE path = ?
+	`, path).Scan(&result.Size, &result.Files)
+	if err == nil {
+		return result, nil
+	}
+
+	// Calculate and cache on demand
+	sqlQ := `
+		SELECT COALESCE(SUM(size), 0), COUNT(*)
+		FROM files
+		WHERE path LIKE ? AND is_dir = 0
+	`
+	err = s.dbs[indexName].QueryRow(sqlQ, path+"/%").Scan(&result.Size, &result.Files)
+	if err != nil {
+		return models.DirInfo{}, err
+	}
+
+	// Cache the result
+	s.dbs[indexName].Exec(`
+		INSERT OR REPLACE INTO dir_sizes (path, total_size, file_count)
+		VALUES (?, ?, ?)
+	`, path, result.Size, result.Files)
 
 	return result, nil
 }

@@ -253,79 +253,7 @@ func finalizeIndex(db *sql.DB, indexName string) error {
 		log.Printf("Warning: failed to cache stats: %v", err)
 	}
 
-	log.Println("  Calculating directory sizes...")
-	if err := calculateAndCacheDirSizes(db); err != nil {
-		log.Printf("Warning: failed to cache dir sizes: %v", err)
-	}
-
 	return nil
-}
-
-func calculateAndCacheDirSizes(db *sql.DB) error {
-	// Clear existing cache
-	if _, err := db.Exec(`DELETE FROM dir_sizes`); err != nil {
-		return err
-	}
-
-	// Calculate sizes for all directories using a single efficient query
-	// This aggregates file sizes by their parent directory path
-	_, err := db.Exec(`
-		INSERT INTO dir_sizes (path, total_size, file_count)
-		SELECT
-			dir_path,
-			SUM(size) as total_size,
-			COUNT(*) as file_count
-		FROM (
-			SELECT
-				CASE
-					WHEN instr(path, '/') > 0 THEN substr(path, 1, length(path) - length(name) - 1)
-					ELSE ''
-				END as dir_path,
-				size
-			FROM files
-			WHERE is_dir = 0 AND is_searchable = 2
-		)
-		WHERE dir_path != ''
-		GROUP BY dir_path
-	`)
-	if err != nil {
-		return err
-	}
-
-	// Now calculate cumulative sizes (including subdirectories)
-	// We need to sum up sizes from all subdirectories for each directory
-	_, err = db.Exec(`
-		INSERT OR REPLACE INTO dir_sizes (path, total_size, file_count)
-		SELECT
-			d.path,
-			COALESCE(d.total_size, 0) + COALESCE(sub.sub_size, 0),
-			COALESCE(d.file_count, 0) + COALESCE(sub.sub_count, 0)
-		FROM dir_sizes d
-		LEFT JOIN (
-			SELECT
-				substr(path, 1, instr(path || '/', '/') - 1) as parent,
-				SUM(total_size) as sub_size,
-				SUM(file_count) as sub_count
-			FROM dir_sizes
-			WHERE instr(path, '/') > 0
-			GROUP BY parent
-		) sub ON d.path = sub.parent
-		WHERE sub.parent IS NOT NULL
-	`)
-
-	// For deeply nested structures, we need recursive calculation
-	// Let's use a simpler approach: calculate for each directory path in files table
-	_, err = db.Exec(`
-		INSERT OR REPLACE INTO dir_sizes (path, total_size, file_count)
-		SELECT
-			f.path as dir_path,
-			(SELECT COALESCE(SUM(size), 0) FROM files WHERE path LIKE f.path || '/%' AND is_dir = 0),
-			(SELECT COUNT(*) FROM files WHERE path LIKE f.path || '/%' AND is_dir = 0)
-		FROM files f
-		WHERE f.is_dir = 1 AND f.is_searchable = 2
-	`)
-
-	return err
 }
 
 func calculateAndCacheStats(db *sql.DB, indexName string) error {

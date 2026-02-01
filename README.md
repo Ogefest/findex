@@ -1,27 +1,32 @@
 # FIndex
 
-**FIndex** is a fast, privacy-focused file indexing and search tool. It indexes your files into a local SQLite database with full-text search (FTS5), allowing you to quickly find files across multiple directories from a clean web interface.
+Fast file indexing and search tool designed for large file collections. Indexes tens of millions of files into a local SQLite database with full-text search, then lets you find them instantly through a web interface.
+
+Runs entirely locally — no cloud, no external services.
 
 ## Use Cases
 
-- **Media library management** - Index your movies, music, and photos across multiple drives
-- **Document search** - Quickly find documents in large archives
-- **NAS file discovery** - Browse and search files on network storage
-- **Personal file organization** - Keep track of files scattered across different locations
-- **Offline file catalog** - Index files that aren't always accessible (external drives, remote servers)
+- **Media libraries** — movies, music, photos across multiple drives
+- **NAS/network storage** — searchable catalog of files on Synology, QNAP, or any mounted share
+- **Document archives** — find files in large corporate or personal archives
+- **Backup drives** — index external drives once, search the catalog even when disconnected
+- **Shared assets** — quick search across team file servers
 
 ## Key Features
 
-- **Privacy-first** - Everything runs locally, no external connections, no telemetry
-- **Fast full-text search** - SQLite FTS5 provides instant search results
-- **Multiple indexes** - Organize files into separate searchable collections
-- **Advanced filtering** - Filter by size, extension, date, file type
-- **Directory browsing** - Navigate through indexed directory structures
-- **Statistics & insights** - View storage usage, file type distribution, largest files
-- **ZIP archive support** - Optionally index and browse contents of ZIP files
-- **Responsive design** - Works on desktop and mobile devices
-- **Docker support** - Easy deployment with persistent data
-- **Lightweight** - Single binary, minimal resource usage
+- **Built for scale** — tested with 20+ million files and tens of terabytes of data
+- **Fast search** — SQLite FTS5 provides millisecond search responses
+- **Privacy-first** — everything runs locally, no external connections
+- **Multiple indexes** — organize files into separate searchable collections
+- **Advanced filters** — filter by size, extension, date, file type
+- **Directory browser** — navigate indexed folder structures with size info
+- **ZIP support** — optionally index and browse contents of ZIP archives
+- **Lightweight** — single binary, minimal resource usage
+- **Docker support** — easy deployment with persistent data
+
+## Performance
+
+Indexing 20 million files over NFS takes approximately 20 minutes. Search queries return results in milliseconds regardless of index size. Database size is roughly 1GB per 10 million files.
 
 ## Screenshots
 

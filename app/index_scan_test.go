@@ -1,9 +1,11 @@
 package app
 
 import (
+	"archive/zip"
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -445,4 +447,186 @@ func TestScanSourceIntegration(t *testing.T) {
 			t.Errorf("expected 1 match for 'file1', got %d", count)
 		}
 	})
+}
+
+func TestZipContentScanning(t *testing.T) {
+	// Create a temporary directory
+	tmpDir, err := os.MkdirTemp("", "findex_zip_test_*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Create a ZIP file with test content
+	zipPath := filepath.Join(tmpDir, "test_archive.zip")
+	createTestZip(t, zipPath, map[string]string{
+		"readme.txt":           "Hello World",
+		"docs/manual.pdf":      "PDF content",
+		"docs/guide.txt":       "Guide content",
+		"src/main.go":          "package main",
+		"src/utils/helper.go":  "package utils",
+	})
+
+	t.Run("scan zip contents enabled", func(t *testing.T) {
+		source := NewLocalSource("test-index", []string{tmpDir}, nil, 0, true)
+
+		var foundFiles []models.FileRecord
+		for f := range source.Walk() {
+			foundFiles = append(foundFiles, f)
+		}
+
+		// Should find: zip file + virtual root + directories + files inside
+		// At minimum: test_archive.zip, test_archive.zip!, and 5 files inside
+		if len(foundFiles) < 7 {
+			t.Errorf("expected at least 7 entries (zip + virtual root + 5 files), got %d", len(foundFiles))
+		}
+
+		// Check for virtual zip root directory
+		foundVirtualRoot := false
+		for _, f := range foundFiles {
+			if strings.HasSuffix(f.Path, "test_archive.zip!") && f.IsDir {
+				foundVirtualRoot = true
+				break
+			}
+		}
+		if !foundVirtualRoot {
+			t.Error("virtual zip root directory (test_archive.zip!) not found")
+		}
+
+		// Check for files inside zip
+		foundInsideZip := 0
+		for _, f := range foundFiles {
+			if strings.Contains(f.Path, "test_archive.zip!/") && !f.IsDir {
+				foundInsideZip++
+			}
+		}
+		if foundInsideZip != 5 {
+			t.Errorf("expected 5 files inside zip, got %d", foundInsideZip)
+		}
+
+		// Check path format for files inside zip
+		for _, f := range foundFiles {
+			if strings.Contains(f.Path, "test_archive.zip!/") {
+				if !strings.Contains(f.Path, "!/") {
+					t.Errorf("invalid zip content path format: %s", f.Path)
+				}
+			}
+		}
+	})
+
+	t.Run("scan zip contents disabled", func(t *testing.T) {
+		source := NewLocalSource("test-index", []string{tmpDir}, nil, 0, false)
+
+		var foundFiles []models.FileRecord
+		for f := range source.Walk() {
+			foundFiles = append(foundFiles, f)
+		}
+
+		// Should only find the zip file itself, not contents
+		zipContentFound := false
+		for _, f := range foundFiles {
+			if strings.Contains(f.Path, "!/") {
+				zipContentFound = true
+				break
+			}
+		}
+		if zipContentFound {
+			t.Error("zip contents should not be scanned when ScanZipContents is false")
+		}
+
+		// But should find the zip file
+		zipFileFound := false
+		for _, f := range foundFiles {
+			if strings.HasSuffix(f.Path, ".zip") && !f.IsDir {
+				zipFileFound = true
+				break
+			}
+		}
+		if !zipFileFound {
+			t.Error("zip file itself should be found")
+		}
+	})
+
+	t.Run("zip file metadata", func(t *testing.T) {
+		source := NewLocalSource("test-index", []string{tmpDir}, nil, 0, true)
+
+		var foundFiles []models.FileRecord
+		for f := range source.Walk() {
+			foundFiles = append(foundFiles, f)
+		}
+
+		// Find a specific file inside zip and check its properties
+		var readmeFile *models.FileRecord
+		for i, f := range foundFiles {
+			if strings.HasSuffix(f.Path, "test_archive.zip!/readme.txt") {
+				readmeFile = &foundFiles[i]
+				break
+			}
+		}
+
+		if readmeFile == nil {
+			t.Fatal("readme.txt inside zip not found")
+		}
+
+		if readmeFile.Name != "readme.txt" {
+			t.Errorf("expected name 'readme.txt', got '%s'", readmeFile.Name)
+		}
+		if readmeFile.Ext != ".txt" {
+			t.Errorf("expected ext '.txt', got '%s'", readmeFile.Ext)
+		}
+		if readmeFile.IsDir {
+			t.Error("readme.txt should not be a directory")
+		}
+		if readmeFile.Size != 11 { // "Hello World" = 11 bytes
+			t.Errorf("expected size 11, got %d", readmeFile.Size)
+		}
+	})
+
+	t.Run("nested directories in zip", func(t *testing.T) {
+		source := NewLocalSource("test-index", []string{tmpDir}, nil, 0, true)
+
+		var foundFiles []models.FileRecord
+		for f := range source.Walk() {
+			foundFiles = append(foundFiles, f)
+		}
+
+		// Check that nested directories are created
+		expectedDirs := []string{"docs", "src", "src/utils"}
+		for _, dir := range expectedDirs {
+			found := false
+			for _, f := range foundFiles {
+				if strings.Contains(f.Path, "test_archive.zip!/"+dir) && f.IsDir {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("expected directory '%s' inside zip not found", dir)
+			}
+		}
+	})
+}
+
+func createTestZip(t *testing.T, zipPath string, files map[string]string) {
+	t.Helper()
+
+	zipFile, err := os.Create(zipPath)
+	if err != nil {
+		t.Fatalf("failed to create zip file: %v", err)
+	}
+	defer zipFile.Close()
+
+	zipWriter := zip.NewWriter(zipFile)
+	defer zipWriter.Close()
+
+	for name, content := range files {
+		writer, err := zipWriter.Create(name)
+		if err != nil {
+			t.Fatalf("failed to create file in zip: %v", err)
+		}
+		_, err = writer.Write([]byte(content))
+		if err != nil {
+			t.Fatalf("failed to write to zip: %v", err)
+		}
+	}
 }

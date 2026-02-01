@@ -54,7 +54,9 @@ func (l *LocalSource) Walk() <-chan models.FileRecord {
 		defer close(filesCh)
 
 		for _, root := range l.RootPaths {
-			l.walkRootParallel(root, filesCh)
+			// Normalize root path for consistency
+			cleanRoot := filepath.Clean(root)
+			l.walkRootParallel(cleanRoot, filesCh)
 		}
 	}()
 

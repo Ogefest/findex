@@ -103,23 +103,26 @@ func insertTestData(t *testing.T, db *sql.DB, indexName string) {
 	t.Helper()
 
 	now := time.Now()
+	// Root path simulates an absolute path that would be indexed
+	root := "/testroot"
+
 	files := []struct {
 		path    string
 		name    string
-		dir     string
+		dir     string // dir is the root path for all files
 		ext     string
 		size    int64
 		modTime time.Time
 		isDir   bool
 	}{
-		{"documents", "documents", "", "", 0, now, true},
-		{"documents/report.pdf", "report.pdf", "documents", ".pdf", 1024 * 1024, now.AddDate(0, -1, 0), false},
-		{"documents/notes.txt", "notes.txt", "documents", ".txt", 512, now.AddDate(0, 0, -7), false},
-		{"images", "images", "", "", 0, now, true},
-		{"images/photo.jpg", "photo.jpg", "images", ".jpg", 5 * 1024 * 1024, now.AddDate(-1, 0, 0), false},
-		{"images/screenshot.png", "screenshot.png", "images", ".png", 2 * 1024 * 1024, now, false},
-		{"videos", "videos", "", "", 0, now, true},
-		{"videos/movie.mp4", "movie.mp4", "videos", ".mp4", 500 * 1024 * 1024, now.AddDate(0, -6, 0), false},
+		{root + "/documents", "documents", root, "", 0, now, true},
+		{root + "/documents/report.pdf", "report.pdf", root, ".pdf", 1024 * 1024, now.AddDate(0, -1, 0), false},
+		{root + "/documents/notes.txt", "notes.txt", root, ".txt", 512, now.AddDate(0, 0, -7), false},
+		{root + "/images", "images", root, "", 0, now, true},
+		{root + "/images/photo.jpg", "photo.jpg", root, ".jpg", 5 * 1024 * 1024, now.AddDate(-1, 0, 0), false},
+		{root + "/images/screenshot.png", "screenshot.png", root, ".png", 2 * 1024 * 1024, now, false},
+		{root + "/videos", "videos", root, "", 0, now, true},
+		{root + "/videos/movie.mp4", "movie.mp4", root, ".mp4", 500 * 1024 * 1024, now.AddDate(0, -6, 0), false},
 	}
 
 	for _, f := range files {
@@ -127,12 +130,9 @@ func insertTestData(t *testing.T, db *sql.DB, indexName string) {
 		if f.isDir {
 			isDir = 1
 		}
-		// Calculate dir_index same way as in source_local.go
-		normalized := filepath.Clean(f.dir)
-		if normalized == "" {
-			normalized = "."
-		}
-		dirIndex := int64(crc32.ChecksumIEEE([]byte(normalized)))
+		// Calculate dir_index same way as in source_local.go - hash of parent directory
+		parentDir := filepath.Dir(f.path)
+		dirIndex := int64(crc32.ChecksumIEEE([]byte(filepath.Clean(parentDir))))
 
 		result, err := db.Exec(`
 			INSERT INTO files(path, name, dir, ext, size, mod_time, is_dir, is_searchable, index_name, dir_index)
@@ -150,9 +150,9 @@ func insertTestData(t *testing.T, db *sql.DB, indexName string) {
 	}
 
 	// Insert dir_sizes cache
-	db.Exec(`INSERT INTO dir_sizes(path, total_size, file_count) VALUES (?, ?, ?)`, "documents", 1024*1024+512, 2)
-	db.Exec(`INSERT INTO dir_sizes(path, total_size, file_count) VALUES (?, ?, ?)`, "images", 7*1024*1024, 2)
-	db.Exec(`INSERT INTO dir_sizes(path, total_size, file_count) VALUES (?, ?, ?)`, "videos", 500*1024*1024, 1)
+	db.Exec(`INSERT INTO dir_sizes(path, total_size, file_count) VALUES (?, ?, ?)`, root+"/documents", 1024*1024+512, 2)
+	db.Exec(`INSERT INTO dir_sizes(path, total_size, file_count) VALUES (?, ?, ?)`, root+"/images", 7*1024*1024, 2)
+	db.Exec(`INSERT INTO dir_sizes(path, total_size, file_count) VALUES (?, ?, ?)`, root+"/videos", 500*1024*1024, 1)
 }
 
 // Test search functionality

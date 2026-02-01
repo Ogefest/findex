@@ -86,7 +86,7 @@
                             {{end}}
                         </td>
                         <td>
-                            <a href="{{if .IsDir}}/browse/{{$.Index}}?path={{$.Path | addTrailingSlash}}{{.Name | urlquery}}{{else}}/download/{{$.Index}}-{{.ID}}{{end}}"
+                            <a href="{{if .IsDir}}/browse/{{$.Index}}?path={{.Path | urlquery}}{{else}}/download/{{$.Index}}-{{.ID}}{{end}}"
                                class="text-decoration-none fw-semibold"
                                {{if not .IsDir}}target="_blank"{{end}}>
                                 {{.Name}}{{if .IsDir}}/{{end}}
@@ -114,7 +114,7 @@
         <!-- Mobile: Card view -->
         <div class="mobile-cards">
             {{range .Items}}
-            <a href="{{if .IsDir}}/browse/{{$.Index}}?path={{$.Path | addTrailingSlash}}{{.Name | urlquery}}{{else}}/download/{{$.Index}}-{{.ID}}{{end}}"
+            <a href="{{if .IsDir}}/browse/{{$.Index}}?path={{.Path | urlquery}}{{else}}/download/{{$.Index}}-{{.ID}}{{end}}"
                class="file-card d-flex text-decoration-none text-dark"
                {{if not .IsDir}}target="_blank"{{end}}>
                 <div class="file-icon">

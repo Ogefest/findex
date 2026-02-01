@@ -99,38 +99,82 @@ func (s *Searcher) GetDirectoryContent(indexName string, path string) ([]models.
 		return nil, fmt.Errorf("index not found: %s", indexName)
 	}
 
-	// If path is empty, show root directories (distinct Dir values)
-	if path == "" {
-		sqlQuery := `
-			SELECT DISTINCT dir FROM files WHERE dir != ''
-		`
-		rows, err := db.Query(sqlQuery)
-		if err != nil {
-			return nil, err
-		}
-		defer rows.Close()
+	// Get distinct root paths
+	rootRows, err := db.Query(`SELECT DISTINCT dir FROM files WHERE dir != ''`)
+	if err != nil {
+		log.Printf("Error getting roots: %v", err)
+		return nil, err
+	}
 
+	var roots []string
+	for rootRows.Next() {
+		var dir string
+		if err := rootRows.Scan(&dir); err != nil {
+			continue
+		}
+		roots = append(roots, dir)
+	}
+	rootRows.Close()
+	log.Printf("Found %d roots: %v", len(roots), roots)
+
+	// If path is empty, show immediate children of all root directories
+	if path == "" {
 		var result []models.FileRecord
-		for rows.Next() {
-			var dir string
-			if err := rows.Scan(&dir); err != nil {
+		for _, root := range roots {
+			dirIndex := int64(crc32.ChecksumIEEE([]byte(filepath.Clean(root))))
+			rows, err := db.Query(`
+				SELECT f.id, f.path, f.name, f.dir, f.ext, f.size, f.mod_time, f.is_dir, f.index_name
+				FROM files f
+				WHERE dir_index = ? AND f.path LIKE ?
+				ORDER BY f.is_dir DESC, f.name
+			`, dirIndex, root+"/%")
+			if err != nil {
 				continue
 			}
-			result = append(result, models.FileRecord{
-				Path:      dir,
-				Name:      filepath.Base(dir),
-				Dir:       filepath.Dir(dir),
-				IsDir:     true,
-				IndexName: indexName,
-			})
+
+			for rows.Next() {
+				var f models.FileRecord
+				var mod int64
+				var isDir int
+				if err := rows.Scan(&f.ID, &f.Path, &f.Name, &f.Dir, &f.Ext, &f.Size, &mod, &isDir, &f.IndexName); err != nil {
+					continue
+				}
+				f.ModTime = time.Unix(mod, 0)
+				f.IsDir = isDir != 0
+				result = append(result, f)
+			}
+			rows.Close()
 		}
 		return result, nil
 	}
 
-	// For non-empty path, list immediate children
-	// Path is now the full absolute path like /data/files1 or /data/files1/subfolder
-	pathWithSlash := path + "/"
-	dirIndex := int64(crc32.ChecksumIEEE([]byte(filepath.Clean(path))))
+	// For non-empty path, check if it's a relative path and resolve it
+	// If path doesn't start with any root, try to find matching root + path
+	fullPath := path
+	isRelative := true
+	for _, root := range roots {
+		if strings.HasPrefix(path, root) {
+			isRelative = false
+			break
+		}
+	}
+	if isRelative && len(roots) > 0 {
+		// Try to find a matching full path
+		for _, root := range roots {
+			testPath := root + "/" + path
+			var count int
+			db.QueryRow(`SELECT COUNT(*) FROM files WHERE path = ? OR path LIKE ?`, testPath, testPath+"/%").Scan(&count)
+			log.Printf("Checking relative path: root=%s, testPath=%s, count=%d", root, testPath, count)
+			if count > 0 {
+				fullPath = testPath
+				log.Printf("Resolved relative path %s to %s", path, fullPath)
+				break
+			}
+		}
+	}
+
+	pathWithSlash := fullPath + "/"
+	dirIndex := int64(crc32.ChecksumIEEE([]byte(filepath.Clean(fullPath))))
 
 	sqlQuery := `
 		SELECT
@@ -219,19 +263,57 @@ func (s *Searcher) GetDirectorySize(indexName string, path string) (models.DirIn
 	log.Printf("Dir size for %s %s\n", indexName, path)
 	var result = models.DirInfo{}
 
+	db := s.dbs[indexName]
+	if db == nil {
+		return models.DirInfo{}, fmt.Errorf("index not found: %s", indexName)
+	}
+
 	if path == "" {
 		sqlQ := "SELECT SUM(size), COUNT(*) FROM files WHERE is_dir = 0"
-		err := s.dbs[indexName].QueryRow(sqlQ).Scan(&result.Size, &result.Files)
+		err := db.QueryRow(sqlQ).Scan(&result.Size, &result.Files)
 		if err != nil {
 			return models.DirInfo{}, err
 		}
 		return result, nil
 	}
 
+	// Resolve relative path to full path
+	fullPath := path
+	rootRows, err := db.Query(`SELECT DISTINCT dir FROM files WHERE dir != ''`)
+	if err == nil {
+		var roots []string
+		for rootRows.Next() {
+			var dir string
+			if rootRows.Scan(&dir) == nil {
+				roots = append(roots, dir)
+			}
+		}
+		rootRows.Close()
+
+		isRelative := true
+		for _, root := range roots {
+			if strings.HasPrefix(path, root) {
+				isRelative = false
+				break
+			}
+		}
+		if isRelative && len(roots) > 0 {
+			for _, root := range roots {
+				testPath := root + "/" + path
+				var count int
+				db.QueryRow(`SELECT COUNT(*) FROM files WHERE path = ? OR path LIKE ?`, testPath, testPath+"/%").Scan(&count)
+				if count > 0 {
+					fullPath = testPath
+					break
+				}
+			}
+		}
+	}
+
 	// Try cache first
-	err := s.dbs[indexName].QueryRow(`
+	err = db.QueryRow(`
 		SELECT total_size, file_count FROM dir_sizes WHERE path = ?
-	`, path).Scan(&result.Size, &result.Files)
+	`, fullPath).Scan(&result.Size, &result.Files)
 	if err == nil {
 		return result, nil
 	}
@@ -242,16 +324,16 @@ func (s *Searcher) GetDirectorySize(indexName string, path string) (models.DirIn
 		FROM files
 		WHERE path LIKE ? AND is_dir = 0
 	`
-	err = s.dbs[indexName].QueryRow(sqlQ, path+"/%").Scan(&result.Size, &result.Files)
+	err = db.QueryRow(sqlQ, fullPath+"/%").Scan(&result.Size, &result.Files)
 	if err != nil {
 		return models.DirInfo{}, err
 	}
 
 	// Cache the result
-	s.dbs[indexName].Exec(`
+	db.Exec(`
 		INSERT OR REPLACE INTO dir_sizes (path, total_size, file_count)
 		VALUES (?, ?, ?)
-	`, path, result.Size, result.Files)
+	`, fullPath, result.Size, result.Files)
 
 	return result, nil
 }

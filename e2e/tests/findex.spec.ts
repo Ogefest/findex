@@ -83,7 +83,8 @@ test.describe('FIndex E2E Tests', () => {
 
       // Click on documents folder
       await page.locator('table tbody a:has-text("documents/")').click();
-      await page.waitForURL(/path=documents/);
+      // URL now contains full path (e.g., e2e/testdata/files/documents)
+      await page.waitForURL(/path=.*documents/);
 
       // Should see document files
       await expect(page.locator('table tbody a:has-text("annual_report_2024.pdf")')).toBeVisible();
@@ -91,7 +92,14 @@ test.describe('FIndex E2E Tests', () => {
     });
 
     test('should show breadcrumb navigation', async ({ page }) => {
-      await page.goto('/browse/test-files?path=images/vacation');
+      // Navigate to images folder first
+      await page.goto('/browse/test-files?path=');
+      await page.locator('table tbody a:has-text("images/")').click();
+      await page.waitForURL(/path=.*images/);
+
+      // Then navigate to vacation
+      await page.locator('table tbody a:has-text("vacation/")').click();
+      await page.waitForURL(/path=.*vacation/);
 
       // Should see breadcrumbs
       await expect(page.locator('nav[aria-label="breadcrumb"]')).toBeVisible();

@@ -2,16 +2,16 @@ package app
 
 import "log"
 
-func Run(configPath, migrationsPath string) error {
+func Run(configPath string) error {
 	cfg, err := LoadConfig(configPath)
 	if err != nil {
 		return err
 	}
 
-	if err := InitIndexes(cfg, migrationsPath); err != nil {
+	if err := InitIndexes(cfg); err != nil {
 		return err
 	}
-	if err := ScanIndexes(cfg, migrationsPath); err != nil {
+	if err := ScanIndexes(cfg); err != nil {
 		return err
 	}
 

@@ -10,7 +10,7 @@ import (
 	"github.com/ogefest/findex/models"
 )
 
-func InitIndexes(cfg *models.AppConfig, migrationsPath string) error {
+func InitIndexes(cfg *models.AppConfig) error {
 	defined := map[string]bool{}
 
 	for _, idx := range cfg.Indexes {
@@ -24,7 +24,7 @@ func InitIndexes(cfg *models.AppConfig, migrationsPath string) error {
 		}
 		defined[absDBPath] = true
 
-		if err := ensureIndex(idx, migrationsPath); err != nil {
+		if err := ensureIndex(idx); err != nil {
 			return fmt.Errorf("failed to init index %s: %w", idx.Name, err)
 		}
 	}
@@ -57,7 +57,7 @@ func InitIndexes(cfg *models.AppConfig, migrationsPath string) error {
 	return nil
 }
 
-func ensureIndex(idx models.IndexConfig, migrationsPath string) error {
+func ensureIndex(idx models.IndexConfig) error {
 	if err := os.MkdirAll(filepath.Dir(idx.DBPath), 0755); err != nil {
 		return err
 	}
@@ -68,5 +68,5 @@ func ensureIndex(idx models.IndexConfig, migrationsPath string) error {
 	}
 	defer db.Close()
 
-	return RunMigrations(db, migrationsPath)
+	return RunMigrations(db)
 }

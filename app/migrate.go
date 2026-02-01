@@ -2,19 +2,17 @@ package app
 
 import (
 	"database/sql"
+	_ "embed"
 	"log"
-	"os"
 
 	_ "modernc.org/sqlite"
 )
 
-func RunMigrations(db *sql.DB, migrationsPath string) error {
-	content, err := os.ReadFile(migrationsPath)
-	if err != nil {
-		return err
-	}
+//go:embed init.sql
+var initSQL string
 
-	_, err = db.Exec(string(content))
+func RunMigrations(db *sql.DB) error {
+	_, err := db.Exec(initSQL)
 	if err != nil {
 		return err
 	}

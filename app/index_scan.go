@@ -15,7 +15,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-func ScanIndexes(cfg *models.AppConfig, migrationsPath string) error {
+func ScanIndexes(cfg *models.AppConfig) error {
 	for _, idx := range cfg.Indexes {
 		absDBPath, err := filepath.Abs(idx.DBPath)
 		if err != nil {
@@ -64,7 +64,7 @@ func ScanIndexes(cfg *models.AppConfig, migrationsPath string) error {
 		os.Remove(tempDBPath + "-shm")
 
 		// Initialize temp database with schema
-		tempDB, err := initTempDB(tempDBPath, migrationsPath)
+		tempDB, err := initTempDB(tempDBPath)
 		if err != nil {
 			return fmt.Errorf("failed to init temp db for index %s: %w", idx.Name, err)
 		}
@@ -114,7 +114,7 @@ func ScanIndexes(cfg *models.AppConfig, migrationsPath string) error {
 	return nil
 }
 
-func initTempDB(tempPath, migrationsPath string) (*sql.DB, error) {
+func initTempDB(tempPath string) (*sql.DB, error) {
 	db, err := sql.Open("sqlite", tempPath)
 	if err != nil {
 		return nil, err
@@ -123,7 +123,7 @@ func initTempDB(tempPath, migrationsPath string) (*sql.DB, error) {
 		db.Close()
 		return nil, fmt.Errorf("failed to set journal_mode = WAL: %w", err)
 	}
-	if err := RunMigrations(db, migrationsPath); err != nil {
+	if err := RunMigrations(db); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}

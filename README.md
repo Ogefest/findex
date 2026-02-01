@@ -94,6 +94,30 @@ sudo systemctl start findex-scanner.service
 sudo journalctl -u findex-web.service -f
 ```
 
+##### Upgrading
+
+To upgrade an existing installation, simply run the install script again:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/ogefest/findex/main/install.sh | sudo bash
+```
+
+The script automatically detects existing installations and:
+- Preserves your existing `/etc/findex/config.yaml`
+- Updates only the binaries in `/opt/findex/`
+- Keeps systemd units up to date
+
+After upgrade, restart the services:
+```bash
+sudo systemctl restart findex-web.service
+sudo systemctl restart findex-scanner.service
+```
+
+To install a specific version:
+```bash
+curl -sSL https://raw.githubusercontent.com/ogefest/findex/main/install.sh | sudo bash -s v1.2.0
+```
+
 #### Option 2: Download from Releases
 
 Download pre-built binaries from [GitHub Releases](https://github.com/ogefest/findex/releases):

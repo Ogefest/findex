@@ -3,16 +3,17 @@ package webapp
 import (
 	"fmt"
 	"html/template"
+	"io/fs"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 
 	"github.com/ogefest/findex/app"
 	"github.com/ogefest/findex/models"
+	"github.com/ogefest/findex/web"
 )
 
 type WebApp struct {
@@ -64,37 +65,51 @@ func (webapp *WebApp) InitTemplates() {
 	webapp.TemplateCache = make(map[string]*template.Template)
 
 	funcMap := template.FuncMap{
-		"humanizeBytes":       humanizeBytes,
-		"displayPath":         displayPath,
-		"split":               strings.Split,
-		"urlquery":            url.QueryEscape,
-		"addTrailingSlash":    addTrailingSlash,
-		"add":                 func(a, b int) int { return a + b },
-		"sub":                 func(a, b int) int { return a - b },
-		"percent":             func(part, total int64) int64 { if total == 0 { return 0 }; return (part * 100) / total },
-		"buildQueryString":    buildQueryString,
+		"humanizeBytes":        humanizeBytes,
+		"displayPath":          displayPath,
+		"split":                strings.Split,
+		"urlquery":             url.QueryEscape,
+		"addTrailingSlash":     addTrailingSlash,
+		"add":                  func(a, b int) int { return a + b },
+		"sub":                  func(a, b int) int { return a - b },
+		"percent":              func(part, total int64) int64 { if total == 0 { return 0 }; return (part * 100) / total },
+		"buildQueryString":     buildQueryString,
 		"buildQueryStringPage": buildQueryStringPage,
 	}
 
-	pages, err := filepath.Glob("web/templates/*.html")
+	// Read layout template from embedded filesystem
+	layoutContent, err := fs.ReadFile(web.Templates, "templates/layout.html")
 	if err != nil {
-		log.Fatalf("failed to glob templates: %v", err)
+		log.Fatalf("failed to read layout template: %v", err)
 	}
 
-	for _, page := range pages {
-		name := filepath.Base(page)
-		if name == "layout.html" {
+	// Get all template files from embedded filesystem
+	entries, err := fs.ReadDir(web.Templates, "templates")
+	if err != nil {
+		log.Fatalf("failed to read templates directory: %v", err)
+	}
+
+	for _, entry := range entries {
+		name := entry.Name()
+		if name == "layout.html" || !strings.HasSuffix(name, ".html") {
 			continue
 		}
 
+		pageContent, err := fs.ReadFile(web.Templates, "templates/"+name)
+		if err != nil {
+			log.Fatalf("failed to read template %s: %v", name, err)
+		}
+
 		var ts *template.Template
-		var err error
 
 		// Error template is standalone (no layout)
 		if name == "error.html" {
-			ts, err = template.New(name).Funcs(funcMap).ParseFiles(page)
+			ts, err = template.New(name).Funcs(funcMap).Parse(string(pageContent))
 		} else {
-			ts, err = template.New(name).Funcs(funcMap).ParseFiles(page, "web/templates/layout.html")
+			ts, err = template.New(name).Funcs(funcMap).Parse(string(pageContent))
+			if err == nil {
+				ts, err = ts.Parse(string(layoutContent))
+			}
 		}
 
 		if err != nil {

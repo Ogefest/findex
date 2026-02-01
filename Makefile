@@ -1,5 +1,5 @@
 MODULE := github.com/ogefest/findex
-BINS := findex cli webserver
+BINS := findex webserver
 BIN_DIR := bin
 GO := go
 

@@ -48,6 +48,12 @@ func setupTestDB(t *testing.T) (*sql.DB, string, func()) {
 			value TEXT
 		);
 
+		CREATE TABLE IF NOT EXISTS dir_sizes (
+			path TEXT PRIMARY KEY,
+			total_size INTEGER,
+			file_count INTEGER
+		);
+
 		CREATE VIRTUAL TABLE IF NOT EXISTS files_fts USING fts5(name, path, tokenize = 'unicode61');
 
 		CREATE INDEX IF NOT EXISTS idx_files_path ON files(path);

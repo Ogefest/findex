@@ -103,6 +103,13 @@ func ScanIndexes(cfg *models.AppConfig, migrationsPath string) error {
 		os.Remove(tempDBPath + "-shm")
 
 		log.Printf("Index %s scan completed and atomically swapped\n", idx.Name)
+
+		// Start background goroutine to calculate directory sizes
+		go func(dbPath string, indexName string) {
+			if err := CalculateDirSizesBackground(dbPath, indexName); err != nil {
+				log.Printf("Warning: background dir size calculation failed for %s: %v", indexName, err)
+			}
+		}(absDBPath, idx.Name)
 	}
 	return nil
 }

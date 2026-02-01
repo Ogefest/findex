@@ -436,8 +436,15 @@ func setLastScan(db *sql.DB) error {
 }
 
 func getLastScan(db *sql.DB) (time.Time, error) {
+	// Check if metadata table exists (handles fresh/empty databases)
+	var tableName string
+	err := db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name='metadata'`).Scan(&tableName)
+	if err == sql.ErrNoRows {
+		return time.Time{}, nil
+	}
+
 	var ts string
-	err := db.QueryRow(`SELECT value FROM metadata WHERE key='last_scan'`).Scan(&ts)
+	err = db.QueryRow(`SELECT value FROM metadata WHERE key='last_scan'`).Scan(&ts)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return time.Time{}, nil

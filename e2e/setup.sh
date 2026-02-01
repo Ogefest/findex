@@ -38,7 +38,7 @@ echo "Test files created."
 rm -f "$SCRIPT_DIR/testdata/data/test.db"
 
 # Build the application if needed
-if [ ! -f "$PROJECT_ROOT/bin/findex" ] || [ ! -f "$PROJECT_ROOT/bin/webserver" ]; then
+if [ ! -f "$PROJECT_ROOT/bin/findex" ] || [ ! -f "$PROJECT_ROOT/bin/findex-webserver" ]; then
     echo "Building application..."
     cd "$PROJECT_ROOT"
     make build

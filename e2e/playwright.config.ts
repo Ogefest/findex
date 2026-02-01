@@ -23,7 +23,7 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: 'cd .. && ./bin/webserver -config e2e/testdata/config.yaml',
+    command: 'cd .. && ./bin/findex-webserver -config e2e/testdata/config.yaml',
     url: 'http://localhost:18080',
     reuseExistingServer: !process.env.CI,
     timeout: 30000,

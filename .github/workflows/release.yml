@@ -131,7 +131,6 @@ jobs:
 
           mkdir -p release/${ARCHIVE_NAME}
           cp dist/* release/${ARCHIVE_NAME}/
-          cp init.sql release/${ARCHIVE_NAME}/
           cp config.example.yaml release/${ARCHIVE_NAME}/
           cp README.md release/${ARCHIVE_NAME}/
           cp LICENSE release/${ARCHIVE_NAME}/ 2>/dev/null || echo "No LICENSE file"

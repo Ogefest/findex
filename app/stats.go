@@ -364,3 +364,82 @@ func sortYearStats(years []models.YearStats) {
 		}
 	}
 }
+
+// GetScanHistory returns the last N scan history entries for an index
+func (s *Searcher) GetScanHistory(indexName string, limit int) ([]models.ScanHistoryEntry, error) {
+	db := s.dbs[indexName]
+	if db == nil {
+		return nil, nil
+	}
+
+	// Check if table exists
+	var tableName string
+	err := db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name='scan_history'`).Scan(&tableName)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+
+	rows, err := db.Query(`
+		SELECT id, scan_time, stats_json
+		FROM scan_history
+		ORDER BY scan_time DESC
+		LIMIT ?
+	`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var history []models.ScanHistoryEntry
+	for rows.Next() {
+		var entry models.ScanHistoryEntry
+		var scanTimeUnix int64
+		var statsJSON string
+
+		if err := rows.Scan(&entry.ID, &scanTimeUnix, &statsJSON); err != nil {
+			continue
+		}
+
+		entry.ScanTime = time.Unix(scanTimeUnix, 0)
+
+		var stats models.IndexStats
+		if err := json.Unmarshal([]byte(statsJSON), &stats); err == nil {
+			entry.Stats = &stats
+		}
+
+		history = append(history, entry)
+	}
+
+	return history, nil
+}
+
+// GetScanHistoryEntry returns a specific scan history entry by ID
+func (s *Searcher) GetScanHistoryEntry(indexName string, historyID int64) (*models.ScanHistoryEntry, error) {
+	db := s.dbs[indexName]
+	if db == nil {
+		return nil, nil
+	}
+
+	var entry models.ScanHistoryEntry
+	var scanTimeUnix int64
+	var statsJSON string
+
+	err := db.QueryRow(`
+		SELECT id, scan_time, stats_json
+		FROM scan_history
+		WHERE id = ?
+	`, historyID).Scan(&entry.ID, &scanTimeUnix, &statsJSON)
+	if err != nil {
+		return nil, err
+	}
+
+	entry.ScanTime = time.Unix(scanTimeUnix, 0)
+
+	var stats models.IndexStats
+	if err := json.Unmarshal([]byte(statsJSON), &stats); err != nil {
+		return nil, err
+	}
+	entry.Stats = &stats
+
+	return &entry, nil
+}

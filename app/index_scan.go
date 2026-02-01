@@ -425,7 +425,35 @@ func calculateAndCacheStats(db *sql.DB, indexName string) error {
 		return err
 	}
 
-	return setMetadata(db, "stats_cache", string(jsonData))
+	if err := setMetadata(db, "stats_cache", string(jsonData)); err != nil {
+		return err
+	}
+
+	// Save to scan history
+	if err := saveScanHistory(db, jsonData); err != nil {
+		log.Printf("Warning: failed to save scan history: %v", err)
+	}
+
+	return nil
+}
+
+func saveScanHistory(db *sql.DB, statsJSON []byte) error {
+	now := time.Now().Unix()
+
+	// Insert new scan history entry
+	_, err := db.Exec(`INSERT INTO scan_history (scan_time, stats_json) VALUES (?, ?)`, now, string(statsJSON))
+	if err != nil {
+		return err
+	}
+
+	// Keep only last 30 entries
+	_, err = db.Exec(`
+		DELETE FROM scan_history
+		WHERE id NOT IN (
+			SELECT id FROM scan_history ORDER BY scan_time DESC LIMIT 30
+		)
+	`)
+	return err
 }
 
 func setMetadata(db *sql.DB, key, value string) error {

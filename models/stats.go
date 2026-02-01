@@ -48,3 +48,9 @@ type GlobalStats struct {
 	YearDistribution []YearStats
 	IndexStats       []IndexStats
 }
+
+type ScanHistoryEntry struct {
+	ID       int64
+	ScanTime time.Time
+	Stats    *IndexStats
+}

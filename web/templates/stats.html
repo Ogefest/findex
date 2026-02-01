@@ -149,23 +149,55 @@
     <!-- Per-Index Statistics -->
     <h4 class="mb-3"><i class="bi bi-collection me-2"></i>Statistics by Index</h4>
 
+    {{$scanHistories := .ScanHistories}}
+    {{$selectedIndex := .SelectedIndex}}
+    {{$selectedHistoryID := .SelectedHistoryID}}
+    {{$selectedHistory := .SelectedHistory}}
+
     {{range $idx, $indexStats := .Stats.IndexStats}}
+    {{$history := index $scanHistories .Name}}
     <div class="card mb-4">
         <div class="card-header bg-light">
-            <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <h5 class="mb-0">
                     <span class="badge bg-success me-2">{{.Name}}</span>
                     <a href="/browse/{{.Name | urlquery}}?path=" class="btn btn-sm btn-outline-primary">
                         <i class="bi bi-folder2-open me-1"></i>Browse
                     </a>
                 </h5>
-                {{if not .LastScan.IsZero}}
-                <small class="text-muted">
-                    <i class="bi bi-clock me-1"></i>Last scan: {{.LastScan.Format "2006-01-02 15:04:05"}}
-                </small>
-                {{end}}
+                <div class="d-flex align-items-center gap-3">
+                    {{if $history}}
+                    <div class="d-flex align-items-center gap-2">
+                        <label class="form-label mb-0 small text-muted">Scan history:</label>
+                        <select class="form-select form-select-sm" style="width: auto;" onchange="if(this.value) window.location.href=this.value">
+                            <option value="/stats">Current</option>
+                            {{range $history}}
+                            <option value="/stats?index={{$indexStats.Name}}&history_id={{.ID}}" {{if and (eq $selectedIndex $indexStats.Name) (eq $selectedHistoryID (printf "%d" .ID))}}selected{{end}}>
+                                {{.ScanTime.Format "2006-01-02 15:04"}}
+                            </option>
+                            {{end}}
+                        </select>
+                    </div>
+                    {{end}}
+                    {{if not .LastScan.IsZero}}
+                    <span class="badge bg-info">
+                        <i class="bi bi-clock me-1"></i>Last scan: {{.LastScan.Format "2006-01-02 15:04:05"}}
+                    </span>
+                    {{else}}
+                    <span class="badge bg-warning text-dark">
+                        <i class="bi bi-exclamation-triangle me-1"></i>Never scanned
+                    </span>
+                    {{end}}
+                </div>
             </div>
         </div>
+        {{if and $selectedHistory (eq $selectedIndex .Name)}}
+        <div class="alert alert-info mb-0 rounded-0 border-start-0 border-end-0">
+            <i class="bi bi-clock-history me-2"></i>
+            <strong>Viewing historical data from {{$selectedHistory.ScanTime.Format "2006-01-02 15:04:05"}}</strong>
+            <a href="/stats" class="ms-3 btn btn-sm btn-outline-info">View current stats</a>
+        </div>
+        {{end}}
         <div class="card-body">
             <!-- Index Summary Row -->
             <div class="row mb-3">

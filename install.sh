@@ -136,6 +136,20 @@ main() {
     mkdir -p "$DATA_DIR"
     chown "$USER:$GROUP" "$DATA_DIR"
 
+    # Stop running services before upgrade (to avoid "Text file busy" error)
+    SERVICES_WERE_RUNNING=false
+    if [ "$IS_UPGRADE" = true ]; then
+        if systemctl is-active --quiet findex-web.service 2>/dev/null; then
+            info "Stopping findex-web.service..."
+            systemctl stop findex-web.service
+            SERVICES_WERE_RUNNING=true
+        fi
+        if systemctl is-active --quiet findex-scanner.service 2>/dev/null; then
+            info "Stopping findex-scanner.service..."
+            systemctl stop findex-scanner.service
+        fi
+    fi
+
     # Install binaries
     info "Installing binaries to ${INSTALL_DIR}..."
     cp "${EXTRACTED_DIR}/findex" "$INSTALL_DIR/"
@@ -173,10 +187,14 @@ main() {
         info "=== Upgrade complete ==="
         info ""
         info "Upgraded to version: ${VERSION}"
-        info ""
-        info "Restart services to apply changes:"
-        info "  sudo systemctl restart findex-web.service"
-        info "  sudo systemctl restart findex-scanner.service"
+
+        # Restart services that were running before upgrade
+        if [ "$SERVICES_WERE_RUNNING" = true ]; then
+            info ""
+            info "Restarting services..."
+            systemctl start findex-web.service
+            info "findex-web.service started"
+        fi
     else
         info "=== Installation complete ==="
         info ""

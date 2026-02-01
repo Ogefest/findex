@@ -54,6 +54,14 @@ func setupTestDB(t *testing.T) (*sql.DB, string, func()) {
 			file_count INTEGER
 		);
 
+		CREATE TABLE IF NOT EXISTS scan_history (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			scan_time INTEGER NOT NULL,
+			stats_json TEXT NOT NULL
+		);
+
+		CREATE INDEX IF NOT EXISTS idx_scan_history_time ON scan_history(scan_time DESC);
+
 		CREATE VIRTUAL TABLE IF NOT EXISTS files_fts USING fts5(name, path, tokenize = 'unicode61');
 
 		CREATE INDEX IF NOT EXISTS idx_files_path ON files(path);

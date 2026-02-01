@@ -148,8 +148,12 @@ func (s *Searcher) GetDirectoryContent(indexName string, path string) ([]models.
 		f.IsDir = isDir != 0
 
 		if f.IsDir {
-			dirInfo, _ := s.GetDirectorySize(indexName, f.Path)
-			f.Size = dirInfo.Size
+			// Use cached directory size
+			var cachedSize int64
+			err := s.dbs[indexName].QueryRow(`SELECT total_size FROM dir_sizes WHERE path = ?`, f.Path).Scan(&cachedSize)
+			if err == nil {
+				f.Size = cachedSize
+			}
 		}
 
 		result = append(result, f)

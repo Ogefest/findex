@@ -1,0 +1,36 @@
+[Unit]
+Description=Findex Web Server - File Index Search Interface
+Documentation=https://github.com/ogefest/findex
+After=network.target
+
+[Service]
+Type=simple
+User=findex
+Group=findex
+
+# Paths - adjust to your installation
+WorkingDirectory=/opt/findex
+ExecStart=/opt/findex/findex-webserver -config /etc/findex/config.yaml
+
+# Restart policy
+Restart=on-failure
+RestartSec=5
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true
+ReadWritePaths=/var/lib/findex
+
+# Resource limits
+MemoryMax=512M
+TasksMax=100
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=findex-web
+
+[Install]
+WantedBy=multi-user.target

@@ -57,14 +57,63 @@ cd findex
 make build
 
 # Run with demo configuration
-./bin/webserver -config demo/config.yaml
+./bin/findex-webserver -config demo/config.yaml
 ```
 
 Open http://localhost:8080 in your browser to explore the demo.
 
 ### Installation
 
-#### Option 1: Build from Source
+#### Option 1: Quick Install (Linux)
+
+The easiest way to install FIndex on Linux with systemd:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/ogefest/findex/main/install.sh | sudo bash
+```
+
+This will:
+- Download the latest release
+- Install binaries to `/opt/findex/`
+- Create config at `/etc/findex/config.yaml`
+- Set up systemd services
+
+After installation:
+```bash
+# Edit configuration (set your root_paths)
+sudo nano /etc/findex/config.yaml
+
+# Enable and start services
+sudo systemctl enable --now findex-web.service
+sudo systemctl enable --now findex-scanner.timer
+
+# Run initial scan
+sudo systemctl start findex-scanner.service
+
+# View logs
+sudo journalctl -u findex-web.service -f
+```
+
+#### Option 2: Download from Releases
+
+Download pre-built binaries from [GitHub Releases](https://github.com/ogefest/findex/releases):
+
+```bash
+# Download and extract (example for Linux amd64)
+VERSION="v1.0.0"  # Replace with latest version
+curl -sSL "https://github.com/ogefest/findex/releases/download/${VERSION}/findex-${VERSION}-linux-amd64.tar.gz" | tar -xz
+
+# Run directly
+cd findex-${VERSION}-linux-amd64
+./findex-webserver -config config.example.yaml
+```
+
+Available platforms:
+- `linux-amd64`, `linux-arm64`
+- `darwin-amd64`, `darwin-arm64` (macOS)
+- `windows-amd64`
+
+#### Option 3: Build from Source
 
 Requirements: Go 1.23+, Make
 
@@ -75,11 +124,11 @@ cd findex
 make build
 
 # Binaries will be in ./bin/
-# - findex     : Indexer (scans files and builds the database)
-# - webserver  : Web UI for searching and browsing
+# - findex          : Indexer (scans files and builds the database)
+# - findex-webserver: Web UI for searching and browsing
 ```
 
-#### Option 2: Docker
+#### Option 4: Docker
 
 ```bash
 # Clone the repository
@@ -199,13 +248,44 @@ docker compose --profile indexer run --rm findex-indexer
 0 3 * * * docker compose --profile indexer run --rm findex-indexer
 ```
 
+#### Scheduled Indexing with Systemd
+
+If installed via the quick install script, use the included timer:
+
+```bash
+# Enable timer (runs daily at 3 AM)
+sudo systemctl enable --now findex-scanner.timer
+
+# Check timer status
+sudo systemctl list-timers findex-scanner.timer
+
+# Manual scan
+sudo systemctl start findex-scanner.service
+
+# View scan logs
+sudo journalctl -u findex-scanner.service -f
+```
+
+To customize the schedule, edit `/etc/systemd/system/findex-scanner.timer`:
+
+```ini
+[Timer]
+# Every 6 hours
+OnCalendar=*-*-* 00/6:00:00
+
+# Or hourly
+OnCalendar=hourly
+```
+
+Then reload: `sudo systemctl daemon-reload && sudo systemctl restart findex-scanner.timer`
+
 ### 2. Searching (Web Interface)
 
 The web server provides a UI to search and browse your indexed files:
 
 ```bash
 # Start the web server
-./bin/webserver -config config.yaml
+./bin/findex-webserver -config config.yaml
 ```
 
 Then open http://localhost:8080 in your browser.
@@ -277,7 +357,9 @@ findex/
 │   ├── run/         # HTTP handlers
 │   ├── templates/   # HTML templates
 │   └── assets/      # CSS, JS, icons
+├── systemd/         # Systemd service files
 ├── demo/            # Demo configuration and data
+├── install.sh       # Quick install script
 ├── config.example.yaml
 ├── Dockerfile
 └── docker-compose.yml

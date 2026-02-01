@@ -1,0 +1,32 @@
+[Unit]
+Description=Findex Scanner - File Index Builder
+Documentation=https://github.com/ogefest/findex
+After=network.target
+
+[Service]
+Type=oneshot
+User=findex
+Group=findex
+
+# Paths - adjust to your installation
+WorkingDirectory=/opt/findex
+ExecStart=/opt/findex/findex -config /etc/findex/config.yaml
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true
+ReadWritePaths=/var/lib/findex
+
+# Resource limits (scanning can be memory intensive)
+MemoryMax=2G
+TasksMax=200
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=findex-scanner
+
+# Allow longer runtime for large indexes
+TimeoutStartSec=3600

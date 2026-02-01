@@ -122,7 +122,7 @@ jobs:
           mkdir -p dist
 
           go build -ldflags="${LDFLAGS}" -o dist/findex${{ matrix.suffix }} ./cmd/findex
-          go build -ldflags="${LDFLAGS}" -o dist/webserver${{ matrix.suffix }} ./cmd/webserver
+          go build -ldflags="${LDFLAGS}" -o dist/findex-webserver${{ matrix.suffix }} ./cmd/webserver
 
       - name: Create archive
         run: |
@@ -131,12 +131,15 @@ jobs:
 
           mkdir -p release/${ARCHIVE_NAME}
           cp dist/* release/${ARCHIVE_NAME}/
-          cp -r web/assets release/${ARCHIVE_NAME}/
-          cp -r web/templates release/${ARCHIVE_NAME}/
           cp init.sql release/${ARCHIVE_NAME}/
           cp config.example.yaml release/${ARCHIVE_NAME}/
           cp README.md release/${ARCHIVE_NAME}/
           cp LICENSE release/${ARCHIVE_NAME}/ 2>/dev/null || echo "No LICENSE file"
+
+          # Include systemd files for Linux
+          if [ "${{ matrix.goos }}" = "linux" ]; then
+            cp -r systemd release/${ARCHIVE_NAME}/
+          fi
 
           cd release
           if [ "${{ matrix.goos }}" = "windows" ]; then

@@ -1,5 +1,4 @@
 MODULE := github.com/ogefest/findex
-BINS := findex webserver
 BIN_DIR := bin
 GO := go
 
@@ -20,11 +19,15 @@ GOFLAGS := -ldflags="$(LDFLAGS)"
 
 all: build
 
-build: $(BINS:%=$(BIN_DIR)/%)
+build: $(BIN_DIR)/findex $(BIN_DIR)/findex-webserver
 
-$(BIN_DIR)/%:
+$(BIN_DIR)/findex:
 	@mkdir -p $(BIN_DIR)
-	$(GO) build $(GOFLAGS) -o $(BIN_DIR)/$* $(MODULE)/cmd/$*
+	$(GO) build $(GOFLAGS) -o $(BIN_DIR)/findex $(MODULE)/cmd/findex
+
+$(BIN_DIR)/findex-webserver:
+	@mkdir -p $(BIN_DIR)
+	$(GO) build $(GOFLAGS) -o $(BIN_DIR)/findex-webserver $(MODULE)/cmd/webserver
 
 clean:
 	rm -rf $(BIN_DIR)

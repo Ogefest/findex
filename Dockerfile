@@ -29,7 +29,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
         -X 'github.com/ogefest/findex/version.Version=${VERSION}' \
         -X 'github.com/ogefest/findex/version.Commit=${COMMIT}' \
         -X 'github.com/ogefest/findex/version.BuildDate=${BUILD_DATE}'" \
-    -o webserver ./cmd/webserver
+    -o findex-webserver ./cmd/webserver
 
 # Runtime stage
 FROM alpine:3.19
@@ -40,7 +40,7 @@ WORKDIR /app
 
 # Copy binaries
 COPY --from=builder /build/findex /app/
-COPY --from=builder /build/webserver /app/
+COPY --from=builder /build/findex-webserver /app/
 
 # Copy web assets and templates
 COPY --from=builder /build/web/assets /app/web/assets
@@ -58,4 +58,4 @@ ENV CONFIG_PATH=/app/config.yaml
 EXPOSE 8080
 
 # Default command runs the webserver
-CMD ["/app/webserver", "-config", "/app/config.yaml"]
+CMD ["/app/findex-webserver", "-config", "/app/config.yaml"]

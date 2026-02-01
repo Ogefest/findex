@@ -48,15 +48,18 @@ func (l *LocalSource) Name() string {
 }
 
 func (l *LocalSource) Walk() <-chan models.FileRecord {
-	filesCh := make(chan models.FileRecord, 10000)
+	filesCh := make(chan models.FileRecord, 50000)
 
 	go func() {
 		defer close(filesCh)
 
-		for _, root := range l.RootPaths {
-			// Normalize root path for consistency
+		// Process roots sequentially to avoid deadlock with shared channel
+		for i, root := range l.RootPaths {
 			cleanRoot := filepath.Clean(root)
+			log.Printf("Starting scan of root %d/%d: %s", i+1, len(l.RootPaths), cleanRoot)
+			start := time.Now()
 			l.walkRootParallel(cleanRoot, filesCh)
+			log.Printf("Finished scan of root %d/%d: %s (took %v)", i+1, len(l.RootPaths), cleanRoot, time.Since(start))
 		}
 	}()
 

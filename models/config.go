@@ -7,7 +7,8 @@ type IndexConfig struct {
 	RootPaths       []string `mapstructure:"root_paths"`
 	ExcludePaths    []string `mapstructure:"exclude_paths"`
 	RefreshInterval int      `mapstructure:"refresh_interval"`
-	ScanWorkers     int      `mapstructure:"scan_workers"` // 0 = auto (CPU * 2)
+	ScanWorkers     int      `mapstructure:"scan_workers"`     // 0 = auto (CPU * 2)
+	ScanZipContents bool     `mapstructure:"scan_zip_contents"` // scan inside .zip files
 }
 
 type ServerConfig struct {

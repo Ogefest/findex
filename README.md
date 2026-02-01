@@ -18,6 +18,7 @@
 - **Advanced filtering** - Filter by size, extension, date, file type
 - **Directory browsing** - Navigate through indexed directory structures
 - **Statistics & insights** - View storage usage, file type distribution, largest files
+- **ZIP archive support** - Optionally index and browse contents of ZIP files
 - **Responsive design** - Works on desktop and mobile devices
 - **Docker support** - Easy deployment with persistent data
 - **Lightweight** - Single binary, minimal resource usage
@@ -127,6 +128,30 @@ indexes:
 | `root_paths` | List of directories to index |
 | `exclude_paths` | Directories to skip during indexing |
 | `refresh_interval` | Minimum seconds between re-indexing (0 = always re-index) |
+| `scan_zip_contents` | Index files inside ZIP archives (default: `false`) |
+| `scan_workers` | Number of parallel workers for scanning (default: CPU cores × 2) |
+
+### ZIP Archive Indexing
+
+FIndex can optionally scan inside ZIP archives, making their contents searchable and browsable:
+
+```yaml
+indexes:
+  - name: "archives"
+    db_path: "./data/archives.db"
+    source_engine: "local"
+    scan_zip_contents: true  # Enable ZIP scanning
+    root_paths:
+      - "/path/to/archives"
+```
+
+When enabled:
+- Files inside ZIP archives are indexed with paths like `archive.zip!/folder/file.txt`
+- You can browse ZIP contents through the web interface (look for `archive.zip!` entries)
+- Files can be downloaded directly from ZIP archives without manual extraction
+- Search works across both regular files and ZIP contents
+
+**Note:** This feature increases indexing time and database size proportionally to the amount of data inside ZIP files.
 
 ## How It Works
 

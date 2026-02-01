@@ -47,13 +47,13 @@ func ScanIndexes(cfg *models.AppConfig, migrationsPath string) error {
 
 		switch idx.SourceEngine {
 		case "local":
-			source = NewLocalSource(idx.Name, idx.RootPaths, idx.ExcludePaths, idx.ScanWorkers)
+			source = NewLocalSource(idx.Name, idx.RootPaths, idx.ExcludePaths, idx.ScanWorkers, idx.ScanZipContents)
 		default:
 			log.Printf("Skipping unsupported source_engine %s for index %s\n", idx.SourceEngine, idx.Name)
 			continue
 		}
 
-		log.Printf("Scanning index %s using %s engine\n", idx.Name, source.Name())
+		log.Printf("Scanning index %s using %s engine (scan_zip_contents=%v)\n", idx.Name, source.Name(), idx.ScanZipContents)
 
 		// Atomic database swap: scan into temp DB, then rename
 		tempDBPath := absDBPath + ".new"

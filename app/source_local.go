@@ -1,6 +1,7 @@
 package app
 
 import (
+	"archive/zip"
 	"hash/crc32"
 	"log"
 	"os"
@@ -9,26 +10,29 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/ogefest/findex/models"
 )
 
 type LocalSource struct {
-	IndexName    string
-	RootPaths    []string
-	ExcludePaths []string
-	NumWorkers   int
+	IndexName       string
+	RootPaths       []string
+	ExcludePaths    []string
+	NumWorkers      int
+	ScanZipContents bool
 }
 
-func NewLocalSource(indexName string, rootPaths []string, excludePaths []string, numWorkers int) *LocalSource {
+func NewLocalSource(indexName string, rootPaths []string, excludePaths []string, numWorkers int, scanZipContents bool) *LocalSource {
 	if numWorkers <= 0 {
 		numWorkers = runtime.NumCPU() * 2
 	}
 	return &LocalSource{
-		IndexName:    indexName,
-		RootPaths:    rootPaths,
-		ExcludePaths: excludePaths,
-		NumWorkers:   numWorkers,
+		IndexName:       indexName,
+		RootPaths:       rootPaths,
+		ExcludePaths:    excludePaths,
+		NumWorkers:      numWorkers,
+		ScanZipContents: scanZipContents,
 	}
 }
 
@@ -181,6 +185,122 @@ func (l *LocalSource) processDirectory(
 			Size:      info.Size(),
 			ModTime:   info.ModTime(),
 			IsDir:     entry.IsDir(),
+			IndexName: l.IndexName,
+		}
+
+		// Scan inside zip files if enabled
+		if l.ScanZipContents && !entry.IsDir() && strings.ToLower(filepath.Ext(entry.Name())) == ".zip" {
+			log.Printf("Scanning zip contents: %s", path)
+			l.scanZipContents(path, relPath, root, filesCh)
+		}
+	}
+}
+
+func (l *LocalSource) scanZipContents(zipPath, zipRelPath, root string, filesCh chan<- models.FileRecord) {
+	reader, err := zip.OpenReader(zipPath)
+	if err != nil {
+		log.Printf("Error opening zip %s: %v", zipPath, err)
+		return
+	}
+	defer reader.Close()
+
+	// Track directories we've already added
+	addedDirs := make(map[string]bool)
+
+	// Add virtual root directory for zip contents (archive.zip!)
+	zipRootPath := zipRelPath + "!"
+	filesCh <- models.FileRecord{
+		Path:      zipRootPath,
+		Name:      filepath.Base(zipRelPath) + "!",
+		Dir:       root,
+		DirIndex:  int64(l.getDirDeep(zipRootPath)),
+		Ext:       "",
+		Size:      0,
+		ModTime:   time.Time{},
+		IsDir:     true,
+		IndexName: l.IndexName,
+	}
+	addedDirs[zipRootPath] = true
+
+	// Helper to add a directory and all parent directories
+	addDir := func(dirPath string) {
+		parts := strings.Split(dirPath, "/")
+		current := ""
+		for _, part := range parts {
+			if part == "" {
+				continue
+			}
+			if current == "" {
+				current = part
+			} else {
+				current = current + "/" + part
+			}
+
+			fullPath := zipRelPath + "!/" + current
+			if addedDirs[fullPath] {
+				continue
+			}
+			addedDirs[fullPath] = true
+
+			filesCh <- models.FileRecord{
+				Path:      fullPath,
+				Name:      part,
+				Dir:       root,
+				DirIndex:  int64(l.getDirDeep(fullPath)),
+				Ext:       "",
+				Size:      0,
+				ModTime:   time.Time{},
+				IsDir:     true,
+				IndexName: l.IndexName,
+			}
+		}
+	}
+
+	for _, file := range reader.File {
+		// Path format: path/to/archive.zip!/internal/path/file.txt
+		innerPath := zipRelPath + "!/" + file.Name
+
+		// Remove trailing slash for directories
+		innerPath = strings.TrimSuffix(innerPath, "/")
+		name := filepath.Base(file.Name)
+		if name == "" || name == "." {
+			continue
+		}
+
+		// Add parent directories first
+		parentDir := filepath.Dir(file.Name)
+		if parentDir != "." && parentDir != "" {
+			addDir(parentDir)
+		}
+
+		if file.FileInfo().IsDir() {
+			// Add the directory itself
+			if !addedDirs[innerPath] {
+				addedDirs[innerPath] = true
+				filesCh <- models.FileRecord{
+					Path:      innerPath,
+					Name:      name,
+					Dir:       root,
+					DirIndex:  int64(l.getDirDeep(innerPath)),
+					Ext:       "",
+					Size:      0,
+					ModTime:   file.Modified,
+					IsDir:     true,
+					IndexName: l.IndexName,
+				}
+			}
+			continue
+		}
+
+		filesCh <- models.FileRecord{
+			Path:      innerPath,
+			Name:      name,
+			Dir:       root,
+			DirIndex:  int64(l.getDirDeep(innerPath)),
+			Ext:       filepath.Ext(name),
+			Size:      int64(file.UncompressedSize64),
+			ModTime:   file.Modified,
+			IsDir:     false,
 			IndexName: l.IndexName,
 		}
 	}

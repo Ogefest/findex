@@ -17,9 +17,10 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-info() { echo -e "${GREEN}[INFO]${NC} $1"; }
-warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
-error() { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
+# Print to stderr so function return values aren't polluted
+info() { echo -e "${GREEN}[INFO]${NC} $1" >&2; }
+warn() { echo -e "${YELLOW}[WARN]${NC} $1" >&2; }
+error() { echo -e "${RED}[ERROR]${NC} $1" >&2; exit 1; }
 
 # Check if running as root
 if [ "$EUID" -ne 0 ]; then
@@ -89,7 +90,18 @@ download_release() {
 
 # Main installation
 main() {
-    info "=== Findex Installer ==="
+    # Detect if this is fresh install or upgrade
+    IS_UPGRADE=false
+    if [ -f "$CONFIG_DIR/config.yaml" ]; then
+        IS_UPGRADE=true
+    fi
+
+    if [ "$IS_UPGRADE" = true ]; then
+        info "=== Findex Upgrade ==="
+        info "Existing installation detected at ${CONFIG_DIR}/config.yaml"
+    else
+        info "=== Findex Installer ==="
+    fi
 
     # Parse arguments
     VERSION="${1:-}"
@@ -102,19 +114,23 @@ main() {
     fi
 
     PLATFORM=$(detect_platform)
-    info "Installing findex ${VERSION} for ${PLATFORM}"
+
+    if [ "$IS_UPGRADE" = true ]; then
+        info "Upgrading to findex ${VERSION} for ${PLATFORM}"
+    else
+        info "Installing findex ${VERSION} for ${PLATFORM}"
+    fi
 
     # Download release
     EXTRACTED_DIR=$(download_release "$VERSION" "$PLATFORM")
 
-    # Create user if doesn't exist
+    # Create user if doesn't exist (skip message on upgrade if user exists)
     if ! id "$USER" &>/dev/null; then
         info "Creating user ${USER}..."
         useradd -r -s /sbin/nologin -d "$DATA_DIR" "$USER"
     fi
 
-    # Create directories
-    info "Creating directories..."
+    # Create directories (idempotent)
     mkdir -p "$INSTALL_DIR"
     mkdir -p "$CONFIG_DIR"
     mkdir -p "$DATA_DIR"
@@ -126,8 +142,8 @@ main() {
     cp "${EXTRACTED_DIR}/findex-webserver" "$INSTALL_DIR/"
     chmod +x "$INSTALL_DIR/findex" "$INSTALL_DIR/findex-webserver"
 
-    # Install config if doesn't exist
-    if [ ! -f "$CONFIG_DIR/config.yaml" ]; then
+    # Install config only on fresh install
+    if [ "$IS_UPGRADE" = false ]; then
         if [ -f "${EXTRACTED_DIR}/config.example.yaml" ]; then
             info "Installing default config..."
             cp "${EXTRACTED_DIR}/config.example.yaml" "$CONFIG_DIR/config.yaml"
@@ -137,10 +153,10 @@ main() {
             sed -i "s|db_path:.*|db_path: ${DATA_DIR}/index.db|g" "$CONFIG_DIR/config.yaml" 2>/dev/null || true
         fi
     else
-        warn "Config already exists at ${CONFIG_DIR}/config.yaml, skipping"
+        info "Keeping existing config at ${CONFIG_DIR}/config.yaml"
     fi
 
-    # Install systemd units (Linux only)
+    # Install/update systemd units (Linux only)
     if [ -d "${EXTRACTED_DIR}/systemd" ]; then
         info "Installing systemd units..."
         cp "${EXTRACTED_DIR}/systemd/findex-web.service" /etc/systemd/system/
@@ -153,18 +169,28 @@ main() {
     rm -rf "$(dirname "$EXTRACTED_DIR")"
 
     info ""
-    info "=== Installation complete ==="
-    info ""
-    info "Installed version: ${VERSION}"
-    info "Binaries: ${INSTALL_DIR}/"
-    info "Config: ${CONFIG_DIR}/config.yaml"
-    info "Data: ${DATA_DIR}/"
-    info ""
-    info "Next steps:"
-    info "1. Edit config: sudo nano ${CONFIG_DIR}/config.yaml"
-    info "2. Enable web server: sudo systemctl enable --now findex-web.service"
-    info "3. Enable scanner timer: sudo systemctl enable --now findex-scanner.timer"
-    info "4. Run initial scan: sudo systemctl start findex-scanner.service"
+    if [ "$IS_UPGRADE" = true ]; then
+        info "=== Upgrade complete ==="
+        info ""
+        info "Upgraded to version: ${VERSION}"
+        info ""
+        info "Restart services to apply changes:"
+        info "  sudo systemctl restart findex-web.service"
+        info "  sudo systemctl restart findex-scanner.service"
+    else
+        info "=== Installation complete ==="
+        info ""
+        info "Installed version: ${VERSION}"
+        info "Binaries: ${INSTALL_DIR}/"
+        info "Config: ${CONFIG_DIR}/config.yaml"
+        info "Data: ${DATA_DIR}/"
+        info ""
+        info "Next steps:"
+        info "1. Edit config: sudo nano ${CONFIG_DIR}/config.yaml"
+        info "2. Enable web server: sudo systemctl enable --now findex-web.service"
+        info "3. Enable scanner timer: sudo systemctl enable --now findex-scanner.timer"
+        info "4. Run initial scan: sudo systemctl start findex-scanner.service"
+    fi
     info ""
     info "Check status:"
     info "  sudo systemctl status findex-web.service"

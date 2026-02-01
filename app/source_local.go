@@ -174,13 +174,12 @@ func (l *LocalSource) processDirectory(
 			continue
 		}
 
-		relPath, _ := filepath.Rel(root, path)
-
+		// Use full absolute path for uniqueness across multiple root_paths
 		filesCh <- models.FileRecord{
-			Path:      relPath,
+			Path:      path,
 			Name:      entry.Name(),
 			Dir:       root,
-			DirIndex:  int64(l.getDirDeep(relPath)),
+			DirIndex:  int64(l.getDirDeep(path)),
 			Ext:       filepath.Ext(entry.Name()),
 			Size:      info.Size(),
 			ModTime:   info.ModTime(),
@@ -191,12 +190,12 @@ func (l *LocalSource) processDirectory(
 		// Scan inside zip files if enabled
 		if l.ScanZipContents && !entry.IsDir() && strings.ToLower(filepath.Ext(entry.Name())) == ".zip" {
 			log.Printf("Scanning zip contents: %s", path)
-			l.scanZipContents(path, relPath, root, filesCh)
+			l.scanZipContents(path, root, filesCh)
 		}
 	}
 }
 
-func (l *LocalSource) scanZipContents(zipPath, zipRelPath, root string, filesCh chan<- models.FileRecord) {
+func (l *LocalSource) scanZipContents(zipPath, root string, filesCh chan<- models.FileRecord) {
 	reader, err := zip.OpenReader(zipPath)
 	if err != nil {
 		log.Printf("Error opening zip %s: %v", zipPath, err)
@@ -208,10 +207,11 @@ func (l *LocalSource) scanZipContents(zipPath, zipRelPath, root string, filesCh 
 	addedDirs := make(map[string]bool)
 
 	// Add virtual root directory for zip contents (archive.zip!)
-	zipRootPath := zipRelPath + "!"
+	// Use full path: /path/to/archive.zip!
+	zipRootPath := zipPath + "!"
 	filesCh <- models.FileRecord{
 		Path:      zipRootPath,
-		Name:      filepath.Base(zipRelPath) + "!",
+		Name:      filepath.Base(zipPath) + "!",
 		Dir:       root,
 		DirIndex:  int64(l.getDirDeep(zipRootPath)),
 		Ext:       "",
@@ -236,7 +236,7 @@ func (l *LocalSource) scanZipContents(zipPath, zipRelPath, root string, filesCh 
 				current = current + "/" + part
 			}
 
-			fullPath := zipRelPath + "!/" + current
+			fullPath := zipPath + "!/" + current
 			if addedDirs[fullPath] {
 				continue
 			}
@@ -257,8 +257,8 @@ func (l *LocalSource) scanZipContents(zipPath, zipRelPath, root string, filesCh 
 	}
 
 	for _, file := range reader.File {
-		// Path format: path/to/archive.zip!/internal/path/file.txt
-		innerPath := zipRelPath + "!/" + file.Name
+		// Path format: /full/path/to/archive.zip!/internal/path/file.txt
+		innerPath := zipPath + "!/" + file.Name
 
 		// Remove trailing slash for directories
 		innerPath = strings.TrimSuffix(innerPath, "/")

@@ -93,13 +93,44 @@ func (s *Searcher) GetFileByID(indexName string, id int64) (*models.FileRecord, 
 
 func (s *Searcher) GetDirectoryContent(indexName string, path string) ([]models.FileRecord, error) {
 	log.Printf("List dir content %s %s\n", indexName, path)
-	if path != "" {
-		path = fmt.Sprintf("%s/", path)
+
+	db := s.dbs[indexName]
+	if db == nil {
+		return nil, fmt.Errorf("index not found: %s", indexName)
 	}
 
-	dir := filepath.Dir(path)
-	normalized := filepath.Clean(dir)
-	dirIndex := int64(crc32.ChecksumIEEE([]byte(normalized)))
+	// If path is empty, show root directories (distinct Dir values)
+	if path == "" {
+		sqlQuery := `
+			SELECT DISTINCT dir FROM files WHERE dir != ''
+		`
+		rows, err := db.Query(sqlQuery)
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+
+		var result []models.FileRecord
+		for rows.Next() {
+			var dir string
+			if err := rows.Scan(&dir); err != nil {
+				continue
+			}
+			result = append(result, models.FileRecord{
+				Path:      dir,
+				Name:      filepath.Base(dir),
+				Dir:       filepath.Dir(dir),
+				IsDir:     true,
+				IndexName: indexName,
+			})
+		}
+		return result, nil
+	}
+
+	// For non-empty path, list immediate children
+	// Path is now the full absolute path like /data/files1 or /data/files1/subfolder
+	pathWithSlash := path + "/"
+	dirIndex := int64(crc32.ChecksumIEEE([]byte(filepath.Clean(path))))
 
 	sqlQuery := `
 		SELECT
@@ -117,7 +148,7 @@ func (s *Searcher) GetDirectoryContent(indexName string, path string) ([]models.
 			dir_index = ? AND f.path LIKE ?
 		ORDER BY f.is_dir DESC, f.name;
     `
-	rows, err := s.dbs[indexName].Query(sqlQuery, dirIndex, fmt.Sprintf("%s%%", path))
+	rows, err := db.Query(sqlQuery, dirIndex, pathWithSlash+"%")
 	if err != nil {
 		return nil, err
 	}

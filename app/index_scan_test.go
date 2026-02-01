@@ -630,3 +630,114 @@ func createTestZip(t *testing.T, zipPath string, files map[string]string) {
 		}
 	}
 }
+
+func TestMultipleRootPaths(t *testing.T) {
+	// Create three separate root directories
+	tmpDir1 := t.TempDir()
+	tmpDir2 := t.TempDir()
+	tmpDir3 := t.TempDir()
+
+	// Create identical directory structure in each root
+	// This tests that files from all roots are indexed (not just the last one)
+	for _, root := range []string{tmpDir1, tmpDir2, tmpDir3} {
+		// Create documents folder with files
+		docsDir := filepath.Join(root, "documents")
+		os.MkdirAll(docsDir, 0755)
+		os.WriteFile(filepath.Join(docsDir, "report.txt"), []byte("Report from "+root), 0644)
+		os.WriteFile(filepath.Join(docsDir, "notes.txt"), []byte("Notes from "+root), 0644)
+
+		// Create images folder
+		imagesDir := filepath.Join(root, "images")
+		os.MkdirAll(imagesDir, 0755)
+		os.WriteFile(filepath.Join(imagesDir, "photo.jpg"), []byte("Photo from "+root), 0644)
+
+		// Create a file at root level
+		os.WriteFile(filepath.Join(root, "readme.txt"), []byte("Readme from "+root), 0644)
+	}
+
+	source := NewLocalSource("test", []string{tmpDir1, tmpDir2, tmpDir3}, nil, 2, false)
+
+	var allFiles []models.FileRecord
+	for f := range source.Walk() {
+		allFiles = append(allFiles, f)
+	}
+
+	t.Run("all roots indexed", func(t *testing.T) {
+		// Count files from each root
+		filesFromRoot1 := 0
+		filesFromRoot2 := 0
+		filesFromRoot3 := 0
+
+		for _, f := range allFiles {
+			if strings.HasPrefix(f.Path, tmpDir1) {
+				filesFromRoot1++
+			} else if strings.HasPrefix(f.Path, tmpDir2) {
+				filesFromRoot2++
+			} else if strings.HasPrefix(f.Path, tmpDir3) {
+				filesFromRoot3++
+			}
+		}
+
+		// Each root should have: documents/, documents/report.txt, documents/notes.txt,
+		// images/, images/photo.jpg, readme.txt = 6 items
+		expectedPerRoot := 6
+
+		if filesFromRoot1 != expectedPerRoot {
+			t.Errorf("expected %d files from root1, got %d", expectedPerRoot, filesFromRoot1)
+		}
+		if filesFromRoot2 != expectedPerRoot {
+			t.Errorf("expected %d files from root2, got %d", expectedPerRoot, filesFromRoot2)
+		}
+		if filesFromRoot3 != expectedPerRoot {
+			t.Errorf("expected %d files from root3, got %d", expectedPerRoot, filesFromRoot3)
+		}
+	})
+
+	t.Run("paths are unique", func(t *testing.T) {
+		pathSet := make(map[string]bool)
+		for _, f := range allFiles {
+			if pathSet[f.Path] {
+				t.Errorf("duplicate path found: %s", f.Path)
+			}
+			pathSet[f.Path] = true
+		}
+	})
+
+	t.Run("paths are absolute", func(t *testing.T) {
+		for _, f := range allFiles {
+			if !filepath.IsAbs(f.Path) {
+				t.Errorf("path is not absolute: %s", f.Path)
+			}
+		}
+	})
+
+	t.Run("dir field contains root", func(t *testing.T) {
+		for _, f := range allFiles {
+			if f.Dir != tmpDir1 && f.Dir != tmpDir2 && f.Dir != tmpDir3 {
+				t.Errorf("dir field '%s' is not one of the roots", f.Dir)
+			}
+		}
+	})
+
+	t.Run("files can be inserted without conflicts", func(t *testing.T) {
+		db, _, cleanup := setupTestDB(t)
+		defer cleanup()
+
+		err := upsertFilesBatch(context.Background(), db, allFiles)
+		if err != nil {
+			t.Fatalf("upsertFilesBatch failed: %v", err)
+		}
+
+		// Count total files - should be all files, not just from last root
+		var count int
+		err = db.QueryRow("SELECT COUNT(*) FROM files").Scan(&count)
+		if err != nil {
+			t.Fatalf("failed to count files: %v", err)
+		}
+
+		expectedTotal := 18 // 6 files * 3 roots
+		if count != expectedTotal {
+			t.Errorf("expected %d total files in database, got %d (only last root was indexed?)", expectedTotal, count)
+		}
+	})
+}

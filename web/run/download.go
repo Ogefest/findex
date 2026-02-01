@@ -40,16 +40,16 @@ func (webapp *WebApp) download() http.HandlerFunc {
 			return
 		}
 
-		fullPath := fmt.Sprintf("%s/%s", fileInfo.Dir, fileInfo.Path)
-		log.Printf("Download %s\n", fullPath)
+		// Path is now the full absolute path
+		log.Printf("Download %s\n", fileInfo.Path)
 
 		// Check if file is inside a zip archive (path contains "!/")
 		if strings.Contains(fileInfo.Path, "!/") {
-			webapp.downloadFromZip(w, fileInfo.Dir, fileInfo.Path, fileInfo.Name)
+			webapp.downloadFromZip(w, fileInfo.Path, fileInfo.Name)
 			return
 		}
 
-		file, err := os.Open(fullPath)
+		file, err := os.Open(fileInfo.Path)
 		if err != nil {
 			log.Printf("Cannot open file: %v\n", err)
 			webapp.renderError(w, http.StatusNotFound, "The file exists in the index but could not be found on disk.")
@@ -71,17 +71,16 @@ func (webapp *WebApp) download() http.HandlerFunc {
 	}
 }
 
-func (webapp *WebApp) downloadFromZip(w http.ResponseWriter, dir, path, filename string) {
-	// Path format: archive.zip!/internal/path/file.txt
+func (webapp *WebApp) downloadFromZip(w http.ResponseWriter, path, filename string) {
+	// Path format: /full/path/to/archive.zip!/internal/path/file.txt
 	parts := strings.SplitN(path, "!/", 2)
 	if len(parts) != 2 {
 		webapp.renderError(w, http.StatusBadRequest, "Invalid zip path format.")
 		return
 	}
 
-	zipRelPath := parts[0]
+	zipFullPath := parts[0]
 	internalPath := parts[1]
-	zipFullPath := fmt.Sprintf("%s/%s", dir, zipRelPath)
 
 	log.Printf("Extracting %s from %s\n", internalPath, zipFullPath)
 

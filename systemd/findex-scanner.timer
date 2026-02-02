@@ -6,11 +6,11 @@ Documentation=https://github.com/ogefest/findex
 # Run 15 minutes after boot
 OnBootSec=15min
 
-# Then run daily at 3:00 AM
-OnCalendar=*-*-* 03:00:00
+# Run every hour
+OnCalendar=hourly
 
-# Randomize start time by up to 30 minutes to avoid load spikes
-RandomizedDelaySec=1800
+# Small random delay to avoid exact hour load spikes
+RandomizedDelaySec=300
 
 # Persist timer across reboots
 Persistent=true

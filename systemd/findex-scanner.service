@@ -10,7 +10,9 @@ Group=findex
 
 # Paths - adjust to your installation
 WorkingDirectory=/opt/findex
-ExecStart=/opt/findex/findex -config /etc/findex/config.yaml
+
+# Use flock to prevent concurrent runs - if another scan is running, this one will be skipped
+ExecStart=/usr/bin/flock -n /var/lib/findex/scanner.lock /opt/findex/findex -config /etc/findex/config.yaml
 
 # Security hardening
 NoNewPrivileges=true
@@ -28,5 +30,5 @@ StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=findex-scanner
 
-# Allow longer runtime for large indexes
-TimeoutStartSec=3600
+# Allow longer runtime for large indexes (no limit)
+TimeoutStartSec=infinity

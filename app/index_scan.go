@@ -293,11 +293,8 @@ func calculateAndCacheStats(db *sql.DB, indexName string) error {
 		stats.NewestFile = time.Unix(newestMod, 0)
 	}
 
-	// Last scan time
-	var lastScanStr string
-	if err := db.QueryRow(`SELECT value FROM metadata WHERE key = 'last_scan'`).Scan(&lastScanStr); err == nil {
-		stats.LastScan, _ = time.Parse(time.RFC3339, lastScanStr)
-	}
+	// Last scan time - set to now since we're caching stats at scan time
+	stats.LastScan = time.Now()
 
 	// Top 10 largest files
 	rows, err := db.Query(`

@@ -93,20 +93,14 @@ func (l *LocalSource) dirWorker(
 	filesCh chan<- models.FileRecord,
 	activeWorkers *int32,
 ) {
-	for {
-		select {
-		case dir, ok := <-dirQueue:
-			if !ok {
-				return
-			}
-			l.processDirectory(root, dir, dirQueue, filesCh, activeWorkers)
+	for dir := range dirQueue {
+		l.processDirectory(root, dir, dirQueue, filesCh, activeWorkers)
 
-			// Decrease active counter
-			if atomic.AddInt32(activeWorkers, -1) == 0 {
-				// Last worker - close queue
-				close(dirQueue)
-				return
-			}
+		// Decrease active counter
+		if atomic.AddInt32(activeWorkers, -1) == 0 {
+			// Last worker - close queue
+			close(dirQueue)
+			return
 		}
 	}
 }

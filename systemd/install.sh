@@ -29,7 +29,7 @@ echo "Creating directories..."
 mkdir -p "$INSTALL_DIR"
 mkdir -p "$CONFIG_DIR"
 mkdir -p "$DATA_DIR"
-chown "$USER:$GROUP" "$DATA_DIR"
+chown -R "$USER:$GROUP" "$DATA_DIR"
 
 # Check if binaries exist in current directory
 if [ ! -f "findex" ] || [ ! -f "findex-webserver" ]; then

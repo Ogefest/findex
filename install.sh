@@ -134,7 +134,7 @@ main() {
     mkdir -p "$INSTALL_DIR"
     mkdir -p "$CONFIG_DIR"
     mkdir -p "$DATA_DIR"
-    chown "$USER:$GROUP" "$DATA_DIR"
+    chown -R "$USER:$GROUP" "$DATA_DIR"
 
     # Stop running services before upgrade (to avoid "Text file busy" error)
     SERVICES_WERE_RUNNING=false

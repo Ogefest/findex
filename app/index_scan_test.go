@@ -3,6 +3,7 @@ package app
 import (
 	"archive/zip"
 	"context"
+	"database/sql"
 	"os"
 	"path/filepath"
 	"strings"
@@ -740,4 +741,157 @@ func TestMultipleRootPaths(t *testing.T) {
 			t.Errorf("expected %d total files in database, got %d (only last root was indexed?)", expectedTotal, count)
 		}
 	})
+}
+
+func TestForceScan(t *testing.T) {
+	// Create separate directories for data files and database
+	dataDir, err := os.MkdirTemp("", "findex_force_data_*")
+	if err != nil {
+		t.Fatalf("failed to create data dir: %v", err)
+	}
+	defer os.RemoveAll(dataDir)
+
+	dbDir, err := os.MkdirTemp("", "findex_force_db_*")
+	if err != nil {
+		t.Fatalf("failed to create db dir: %v", err)
+	}
+	defer os.RemoveAll(dbDir)
+
+	// Create test files in data directory
+	os.WriteFile(filepath.Join(dataDir, "file1.txt"), []byte("content1"), 0644)
+	os.WriteFile(filepath.Join(dataDir, "file2.txt"), []byte("content2"), 0644)
+
+	// Create database path in separate directory
+	dbPath := filepath.Join(dbDir, "test.db")
+
+	// Create config with a long refresh interval (1 hour)
+	cfg := &models.AppConfig{
+		Indexes: []models.IndexConfig{
+			{
+				Name:             "test-index",
+				DBPath:           dbPath,
+				SourceEngine:     "local",
+				RootPaths:        []string{dataDir},
+				RefreshInterval:  3600, // 1 hour
+				LogRetentionDays: 1,
+			},
+		},
+	}
+
+	// Initialize indexes
+	err = InitIndexes(cfg)
+	if err != nil {
+		t.Fatalf("InitIndexes failed: %v", err)
+	}
+
+	// First scan (should run, no previous scan)
+	err = ScanIndexes(cfg, false)
+	if err != nil {
+		t.Fatalf("First ScanIndexes failed: %v", err)
+	}
+
+	// Verify files were scanned
+	db, err := openDB(dbPath)
+	if err != nil {
+		t.Fatalf("failed to open db: %v", err)
+	}
+
+	var count1 int
+	err = db.QueryRow("SELECT COUNT(*) FROM files WHERE is_dir = 0").Scan(&count1)
+	if err != nil {
+		t.Fatalf("failed to count files: %v", err)
+	}
+	if count1 != 2 {
+		t.Errorf("expected 2 files after first scan, got %d", count1)
+	}
+
+	// Get last scan time
+	lastScan1, err := getLastScan(db)
+	if err != nil {
+		t.Fatalf("failed to get last scan: %v", err)
+	}
+	if lastScan1.IsZero() {
+		t.Fatal("last scan should be set after first scan")
+	}
+	db.Close()
+
+	// Add a new file
+	os.WriteFile(filepath.Join(dataDir, "file3.txt"), []byte("content3"), 0644)
+
+	// Wait a bit to ensure time difference
+	time.Sleep(100 * time.Millisecond)
+
+	t.Run("without force - scan is skipped", func(t *testing.T) {
+		// Scan without force (should be skipped due to refresh_interval)
+		err = ScanIndexes(cfg, false)
+		if err != nil {
+			t.Fatalf("ScanIndexes without force failed: %v", err)
+		}
+
+		// Verify file count is still 2 (new file not indexed)
+		db, err := openDB(dbPath)
+		if err != nil {
+			t.Fatalf("failed to open db: %v", err)
+		}
+		defer db.Close()
+
+		var count2 int
+		err = db.QueryRow("SELECT COUNT(*) FROM files WHERE is_dir = 0").Scan(&count2)
+		if err != nil {
+			t.Fatalf("failed to count files: %v", err)
+		}
+
+		if count2 != 2 {
+			t.Errorf("expected 2 files (scan should be skipped), got %d", count2)
+		}
+
+		// Verify last scan time is unchanged
+		lastScan2, err := getLastScan(db)
+		if err != nil {
+			t.Fatalf("failed to get last scan: %v", err)
+		}
+
+		if !lastScan2.Equal(lastScan1) {
+			t.Errorf("last scan time should not change when scan is skipped")
+		}
+	})
+
+	t.Run("with force - scan is executed", func(t *testing.T) {
+		// Scan with force (should run despite refresh_interval)
+		err = ScanIndexes(cfg, true)
+		if err != nil {
+			t.Fatalf("ScanIndexes with force failed: %v", err)
+		}
+
+		// Verify file count is now 3 (new file indexed)
+		db, err := openDB(dbPath)
+		if err != nil {
+			t.Fatalf("failed to open db: %v", err)
+		}
+		defer db.Close()
+
+		var count3 int
+		err = db.QueryRow("SELECT COUNT(*) FROM files WHERE is_dir = 0").Scan(&count3)
+		if err != nil {
+			t.Fatalf("failed to count files: %v", err)
+		}
+
+		if count3 != 3 {
+			t.Errorf("expected 3 files after force scan, got %d", count3)
+		}
+
+		// Verify last scan time is updated (or at least not before the first scan)
+		lastScan3, err := getLastScan(db)
+		if err != nil {
+			t.Fatalf("failed to get last scan: %v", err)
+		}
+
+		if lastScan3.Before(lastScan1) {
+			t.Errorf("last scan time should not be before first scan time")
+		}
+	})
+}
+
+func openDB(dbPath string) (*sql.DB, error) {
+	return sql.Open("sqlite", dbPath)
 }

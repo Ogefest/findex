@@ -15,7 +15,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-func ScanIndexes(cfg *models.AppConfig) error {
+func ScanIndexes(cfg *models.AppConfig, forceScan bool) error {
 	for _, idx := range cfg.Indexes {
 		absDBPath, err := filepath.Abs(idx.DBPath)
 		if err != nil {
@@ -40,12 +40,16 @@ func ScanIndexes(cfg *models.AppConfig) error {
 		_ = mainDB.QueryRow(`SELECT COUNT(*) FROM files WHERE is_dir = 1`).Scan(&prevDirs)
 		mainDB.Close()
 
-		if !lastScan.IsZero() && idx.RefreshInterval > 0 {
+		if !forceScan && !lastScan.IsZero() && idx.RefreshInterval > 0 {
 			nextScan := lastScan.Add(time.Duration(idx.RefreshInterval) * time.Second)
 			if time.Now().Before(nextScan) {
 				log.Printf("Skipping index %s, last scan at %s, refresh interval %d sec", idx.Name, lastScan.Format(time.RFC3339), idx.RefreshInterval)
 				continue
 			}
+		}
+
+		if forceScan {
+			log.Printf("Force scan enabled for index %s", idx.Name)
 		}
 
 		// Set default log retention if not specified
@@ -77,6 +81,9 @@ func ScanIndexes(cfg *models.AppConfig) error {
 
 		// Log configuration
 		if scanLogger != nil {
+			if forceScan {
+				scanLogger.Log("FORCE SCAN: Ignoring refresh_interval")
+			}
 			scanLogger.LogConfig(idx.RootPaths, idx.ExcludePaths, idx.ScanWorkers, idx.ScanZipContents)
 			scanLogger.LogPreviousStats(prevFiles, prevDirs, lastScan)
 		}

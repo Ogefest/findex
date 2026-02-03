@@ -2,7 +2,7 @@ package app
 
 import "log"
 
-func Run(configPath string) error {
+func Run(configPath string, forceScan bool) error {
 	cfg, err := LoadConfig(configPath)
 	if err != nil {
 		return err
@@ -11,7 +11,7 @@ func Run(configPath string) error {
 	if err := InitIndexes(cfg); err != nil {
 		return err
 	}
-	if err := ScanIndexes(cfg); err != nil {
+	if err := ScanIndexes(cfg, forceScan); err != nil {
 		return err
 	}
 

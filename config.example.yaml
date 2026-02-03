@@ -5,6 +5,12 @@
 #   cp config.example.yaml config.yaml
 #
 # For Docker users, mount this file to /app/config.yaml
+#
+# Command line options:
+#   -config <path>  Path to configuration file (default: index_config.yaml)
+#   -force          Force scan ignoring refresh_interval
+#
+# Example: findex -config config.yaml -force
 # =============================================================================
 
 # -----------------------------------------------------------------------------

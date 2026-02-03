@@ -165,6 +165,9 @@ func (l *LocalSource) processDirectory(
 		return
 	}
 
+	// Counters for directory summary
+	var filesInDir, dirsInDir, excludedInDir int
+
 	for _, entry := range entries {
 		path := filepath.Join(dir, entry.Name())
 
@@ -184,6 +187,7 @@ func (l *LocalSource) processDirectory(
 			}
 		}
 		if excluded {
+			excludedInDir++
 			if l.scanLogger != nil {
 				if entry.IsDir() {
 					l.scanLogger.LogExcludedDir(path, matchedPattern)
@@ -217,10 +221,14 @@ func (l *LocalSource) processDirectory(
 		}
 
 		// Track statistics
-		if l.scanLogger != nil {
-			if entry.IsDir() {
+		if entry.IsDir() {
+			dirsInDir++
+			if l.scanLogger != nil {
 				l.scanLogger.IncrementDirs()
-			} else {
+			}
+		} else {
+			filesInDir++
+			if l.scanLogger != nil {
 				l.scanLogger.IncrementFiles()
 			}
 		}
@@ -243,6 +251,11 @@ func (l *LocalSource) processDirectory(
 			log.Printf("Scanning zip contents: %s", path)
 			l.scanZipContents(path, root, filesCh)
 		}
+	}
+
+	// Log directory summary
+	if l.scanLogger != nil {
+		l.scanLogger.LogDirectory(dir, filesInDir, dirsInDir, excludedInDir)
 	}
 }
 

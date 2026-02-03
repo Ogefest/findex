@@ -177,6 +177,15 @@ func (sl *ScanLogger) LogRootScanComplete(rootIndex, totalRoots int, rootPath st
 	sl.Log("  Directories found in this root: %d", dirsFound)
 }
 
+// LogDirectory logs info about a scanned directory
+func (sl *ScanLogger) LogDirectory(path string, files, dirs, excluded int) {
+	if excluded > 0 {
+		sl.Log("DIR: %s | files: %d, dirs: %d, excluded: %d", path, files, dirs, excluded)
+	} else {
+		sl.Log("DIR: %s | files: %d, dirs: %d", path, files, dirs)
+	}
+}
+
 // LogExcludedDir logs when a directory is excluded
 func (sl *ScanLogger) LogExcludedDir(path, pattern string) {
 	atomic.AddInt64(&sl.dirsExcluded, 1)

@@ -304,7 +304,7 @@ func TestLocalSourceWalk(t *testing.T) {
 	}
 
 	t.Run("walk all files", func(t *testing.T) {
-		source := NewLocalSource("test-index", []string{tmpDir}, nil, 0, false)
+		source := NewLocalSource("test-index", []string{tmpDir}, nil, 0, false, nil)
 
 		var foundFiles []models.FileRecord
 		for f := range source.Walk() {
@@ -333,7 +333,7 @@ func TestLocalSourceWalk(t *testing.T) {
 
 	t.Run("walk with exclude paths", func(t *testing.T) {
 		excludeDir := filepath.Join(tmpDir, "images")
-		source := NewLocalSource("test-index", []string{tmpDir}, []string{excludeDir}, 0, false)
+		source := NewLocalSource("test-index", []string{tmpDir}, []string{excludeDir}, 0, false, nil)
 
 		var foundFiles []models.FileRecord
 		for f := range source.Walk() {
@@ -349,7 +349,7 @@ func TestLocalSourceWalk(t *testing.T) {
 	})
 
 	t.Run("walk non-existent path", func(t *testing.T) {
-		source := NewLocalSource("test-index", []string{"/nonexistent/path"}, nil, 0, false)
+		source := NewLocalSource("test-index", []string{"/nonexistent/path"}, nil, 0, false, nil)
 
 		var foundFiles []models.FileRecord
 		for f := range source.Walk() {
@@ -390,9 +390,9 @@ func TestScanSourceIntegration(t *testing.T) {
 	defer cleanup()
 
 	// Create source and scan
-	source := NewLocalSource("test-index", []string{tmpDir}, nil, 0, false)
+	source := NewLocalSource("test-index", []string{tmpDir}, nil, 0, false, nil)
 
-	err = scanSource(context.Background(), db, source, "test-index")
+	err = scanSource(context.Background(), db, source, "test-index", nil)
 	if err != nil {
 		t.Fatalf("scanSource failed: %v", err)
 	}
@@ -468,7 +468,7 @@ func TestZipContentScanning(t *testing.T) {
 	})
 
 	t.Run("scan zip contents enabled", func(t *testing.T) {
-		source := NewLocalSource("test-index", []string{tmpDir}, nil, 0, true)
+		source := NewLocalSource("test-index", []string{tmpDir}, nil, 0, true, nil)
 
 		var foundFiles []models.FileRecord
 		for f := range source.Walk() {
@@ -515,7 +515,7 @@ func TestZipContentScanning(t *testing.T) {
 	})
 
 	t.Run("scan zip contents disabled", func(t *testing.T) {
-		source := NewLocalSource("test-index", []string{tmpDir}, nil, 0, false)
+		source := NewLocalSource("test-index", []string{tmpDir}, nil, 0, false, nil)
 
 		var foundFiles []models.FileRecord
 		for f := range source.Walk() {
@@ -548,7 +548,7 @@ func TestZipContentScanning(t *testing.T) {
 	})
 
 	t.Run("zip file metadata", func(t *testing.T) {
-		source := NewLocalSource("test-index", []string{tmpDir}, nil, 0, true)
+		source := NewLocalSource("test-index", []string{tmpDir}, nil, 0, true, nil)
 
 		var foundFiles []models.FileRecord
 		for f := range source.Walk() {
@@ -583,7 +583,7 @@ func TestZipContentScanning(t *testing.T) {
 	})
 
 	t.Run("nested directories in zip", func(t *testing.T) {
-		source := NewLocalSource("test-index", []string{tmpDir}, nil, 0, true)
+		source := NewLocalSource("test-index", []string{tmpDir}, nil, 0, true, nil)
 
 		var foundFiles []models.FileRecord
 		for f := range source.Walk() {
@@ -655,7 +655,7 @@ func TestMultipleRootPaths(t *testing.T) {
 		os.WriteFile(filepath.Join(root, "readme.txt"), []byte("Readme from "+root), 0644)
 	}
 
-	source := NewLocalSource("test", []string{tmpDir1, tmpDir2, tmpDir3}, nil, 2, false)
+	source := NewLocalSource("test", []string{tmpDir1, tmpDir2, tmpDir3}, nil, 2, false, nil)
 
 	var allFiles []models.FileRecord
 	for f := range source.Walk() {

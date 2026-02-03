@@ -21,9 +21,10 @@ type LocalSource struct {
 	ExcludePaths    []string
 	NumWorkers      int
 	ScanZipContents bool
+	scanLogger      *ScanLogger
 }
 
-func NewLocalSource(indexName string, rootPaths []string, excludePaths []string, numWorkers int, scanZipContents bool) *LocalSource {
+func NewLocalSource(indexName string, rootPaths []string, excludePaths []string, numWorkers int, scanZipContents bool, scanLogger *ScanLogger) *LocalSource {
 	if numWorkers <= 0 {
 		numWorkers = runtime.NumCPU() * 2
 	}
@@ -33,6 +34,7 @@ func NewLocalSource(indexName string, rootPaths []string, excludePaths []string,
 		ExcludePaths:    excludePaths,
 		NumWorkers:      numWorkers,
 		ScanZipContents: scanZipContents,
+		scanLogger:      scanLogger,
 	}
 }
 
@@ -56,9 +58,25 @@ func (l *LocalSource) Walk() <-chan models.FileRecord {
 		// Process roots sequentially to avoid deadlock with shared channel
 		for i, root := range l.RootPaths {
 			cleanRoot := filepath.Clean(root)
+			if l.scanLogger != nil {
+				l.scanLogger.LogRootScanStart(i+1, len(l.RootPaths), cleanRoot)
+			}
 			log.Printf("Starting scan of root %d/%d: %s", i+1, len(l.RootPaths), cleanRoot)
+
+			// Track files/dirs for this root
+			filesBefore, dirsBefore, _, _ := int64(0), int64(0), int64(0), int64(0)
+			if l.scanLogger != nil {
+				filesBefore, dirsBefore, _, _ = l.scanLogger.GetStats()
+			}
+
 			start := time.Now()
 			l.walkRootParallel(cleanRoot, filesCh)
+			duration := time.Since(start)
+
+			if l.scanLogger != nil {
+				filesAfter, dirsAfter, _, _ := l.scanLogger.GetStats()
+				l.scanLogger.LogRootScanComplete(i+1, len(l.RootPaths), cleanRoot, duration, filesAfter-filesBefore, dirsAfter-dirsBefore)
+			}
 			log.Printf("Finished scan of root %d/%d: %s (took %v)", i+1, len(l.RootPaths), cleanRoot, time.Since(start))
 		}
 	}()
@@ -114,9 +132,15 @@ func (l *LocalSource) processDirectory(
 	// Check exclude for directory
 	for _, exclude := range l.ExcludePaths {
 		if matched, _ := filepath.Match(exclude, dir); matched {
+			if l.scanLogger != nil {
+				l.scanLogger.LogExcludedDir(dir, exclude)
+			}
 			return
 		}
 		if strings.HasPrefix(dir, exclude) {
+			if l.scanLogger != nil {
+				l.scanLogger.LogExcludedDir(dir, exclude)
+			}
 			return
 		}
 	}
@@ -124,6 +148,9 @@ func (l *LocalSource) processDirectory(
 	// Open directory and read without sorting
 	f, err := os.Open(dir)
 	if err != nil {
+		if l.scanLogger != nil {
+			l.scanLogger.LogError("open_dir", dir, err)
+		}
 		log.Printf("Error opening %s: %v", dir, err)
 		return
 	}
@@ -131,6 +158,9 @@ func (l *LocalSource) processDirectory(
 	entries, err := f.ReadDir(-1) // -1 = all entries
 	f.Close()
 	if err != nil {
+		if l.scanLogger != nil {
+			l.scanLogger.LogError("read_dir", dir, err)
+		}
 		log.Printf("Error reading %s: %v", dir, err)
 		return
 	}
@@ -140,17 +170,27 @@ func (l *LocalSource) processDirectory(
 
 		// Check exclude for file/subdirectory
 		excluded := false
+		var matchedPattern string
 		for _, exclude := range l.ExcludePaths {
 			if matched, _ := filepath.Match(exclude, path); matched {
 				excluded = true
+				matchedPattern = exclude
 				break
 			}
 			if strings.HasPrefix(path, exclude) {
 				excluded = true
+				matchedPattern = exclude
 				break
 			}
 		}
 		if excluded {
+			if l.scanLogger != nil {
+				if entry.IsDir() {
+					l.scanLogger.LogExcludedDir(path, matchedPattern)
+				} else {
+					l.scanLogger.LogExcludedFile(path, matchedPattern)
+				}
+			}
 			continue
 		}
 
@@ -170,7 +210,19 @@ func (l *LocalSource) processDirectory(
 		// Send file/directory to channel
 		info, err := entry.Info()
 		if err != nil {
+			if l.scanLogger != nil {
+				l.scanLogger.LogError("file_info", path, err)
+			}
 			continue
+		}
+
+		// Track statistics
+		if l.scanLogger != nil {
+			if entry.IsDir() {
+				l.scanLogger.IncrementDirs()
+			} else {
+				l.scanLogger.IncrementFiles()
+			}
 		}
 
 		// Use full absolute path for uniqueness across multiple root_paths
@@ -197,10 +249,18 @@ func (l *LocalSource) processDirectory(
 func (l *LocalSource) scanZipContents(zipPath, root string, filesCh chan<- models.FileRecord) {
 	reader, err := zip.OpenReader(zipPath)
 	if err != nil {
+		if l.scanLogger != nil {
+			l.scanLogger.LogError("open_zip", zipPath, err)
+		}
 		log.Printf("Error opening zip %s: %v", zipPath, err)
 		return
 	}
 	defer reader.Close()
+
+	entriesCount := len(reader.File)
+	if l.scanLogger != nil {
+		l.scanLogger.LogZipScan(zipPath, entriesCount)
+	}
 
 	// Track directories we've already added
 	addedDirs := make(map[string]bool)

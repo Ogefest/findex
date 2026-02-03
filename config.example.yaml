@@ -22,12 +22,18 @@ server:
 # You can define multiple indexes to organize different file collections.
 #
 # Index fields:
-#   name             - Unique identifier displayed in the UI (required)
-#   db_path          - Path to SQLite database file (required)
-#   source_engine    - Storage backend type: "local" (required)
-#   root_paths       - List of directories to index (required, at least one)
-#   exclude_paths    - List of directories to skip (optional)
-#   refresh_interval - Re-index interval in seconds (optional, default: 86400)
+#   name               - Unique identifier displayed in the UI (required)
+#   db_path            - Path to SQLite database file (required)
+#   source_engine      - Storage backend type: "local" (required)
+#   root_paths         - List of directories to index (required, at least one)
+#   exclude_paths      - List of directories to skip (optional)
+#   refresh_interval   - Re-index interval in seconds (optional, default: 86400)
+#   log_retention_days - Days to keep scan logs (optional, default: 30, 0 = forever)
+#
+# Scan Logs:
+#   Each scan creates a compressed log file (.log.gz) in the database directory.
+#   Logs include: configuration, scan progress, errors, excluded items, and
+#   comparison with previous scan (file count changes, warnings if decreased).
 #
 # -----------------------------------------------------------------------------
 indexes:
@@ -36,6 +42,7 @@ indexes:
     db_path: "./data/documents.db"
     source_engine: "local"
     refresh_interval: 86400  # 24 hours
+    log_retention_days: 30   # keep scan logs for 30 days
     root_paths:
       - "/path/to/your/documents/"
     exclude_paths:

@@ -33,6 +33,11 @@ func ScanIndexes(cfg *models.AppConfig) error {
 			mainDB.Close()
 			return fmt.Errorf("failed to get last scan for index %s: %w", idx.Name, err)
 		}
+
+		// Get previous stats for comparison
+		var prevFiles, prevDirs int64
+		_ = mainDB.QueryRow(`SELECT COUNT(*) FROM files WHERE is_dir = 0`).Scan(&prevFiles)
+		_ = mainDB.QueryRow(`SELECT COUNT(*) FROM files WHERE is_dir = 1`).Scan(&prevDirs)
 		mainDB.Close()
 
 		if !lastScan.IsZero() && idx.RefreshInterval > 0 {
@@ -43,14 +48,37 @@ func ScanIndexes(cfg *models.AppConfig) error {
 			}
 		}
 
+		// Set default log retention if not specified
+		logRetention := idx.LogRetentionDays
+		if logRetention == 0 {
+			logRetention = 30 // default 30 days
+		}
+
+		// Create scan logger
+		scanLogger, err := NewScanLogger(absDBPath, idx.Name, logRetention)
+		if err != nil {
+			log.Printf("Warning: failed to create scan logger: %v", err)
+			// Continue without file logging
+		}
+
 		var source models.FileSource
 
 		switch idx.SourceEngine {
 		case "local":
-			source = NewLocalSource(idx.Name, idx.RootPaths, idx.ExcludePaths, idx.ScanWorkers, idx.ScanZipContents)
+			source = NewLocalSource(idx.Name, idx.RootPaths, idx.ExcludePaths, idx.ScanWorkers, idx.ScanZipContents, scanLogger)
 		default:
+			if scanLogger != nil {
+				scanLogger.Log("Skipping unsupported source_engine %s for index %s", idx.SourceEngine, idx.Name)
+				scanLogger.Close()
+			}
 			log.Printf("Skipping unsupported source_engine %s for index %s\n", idx.SourceEngine, idx.Name)
 			continue
+		}
+
+		// Log configuration
+		if scanLogger != nil {
+			scanLogger.LogConfig(idx.RootPaths, idx.ExcludePaths, idx.ScanWorkers, idx.ScanZipContents)
+			scanLogger.LogPreviousStats(prevFiles, prevDirs, lastScan)
 		}
 
 		log.Printf("Scanning index %s using %s engine (scan_zip_contents=%v)\n", idx.Name, source.Name(), idx.ScanZipContents)
@@ -66,35 +94,70 @@ func ScanIndexes(cfg *models.AppConfig) error {
 		// Initialize temp database with schema
 		tempDB, err := initTempDB(tempDBPath)
 		if err != nil {
+			if scanLogger != nil {
+				scanLogger.LogError("init_temp_db", tempDBPath, err)
+				scanLogger.Close()
+			}
 			return fmt.Errorf("failed to init temp db for index %s: %w", idx.Name, err)
 		}
 
-		if err := scanSource(context.Background(), tempDB, source, idx.Name); err != nil {
+		if err := scanSource(context.Background(), tempDB, source, idx.Name, scanLogger); err != nil {
 			tempDB.Close()
 			// Clean up temp files on error
 			os.Remove(tempDBPath)
 			os.Remove(tempDBPath + "-wal")
 			os.Remove(tempDBPath + "-shm")
+			if scanLogger != nil {
+				scanLogger.LogError("scan_source", idx.Name, err)
+				scanLogger.Close()
+			}
 			return fmt.Errorf("failed to scan index %s: %w", idx.Name, err)
 		}
 
 		// WAL checkpoint before rename to ensure all data is in main file
+		if scanLogger != nil {
+			scanLogger.Log("Checkpointing WAL...")
+		}
 		log.Println("Checkpointing WAL...")
 		if _, err := tempDB.Exec("PRAGMA wal_checkpoint(TRUNCATE)"); err != nil {
 			tempDB.Close()
 			os.Remove(tempDBPath)
 			os.Remove(tempDBPath + "-wal")
 			os.Remove(tempDBPath + "-shm")
+			if scanLogger != nil {
+				scanLogger.LogError("wal_checkpoint", tempDBPath, err)
+				scanLogger.Close()
+			}
 			return fmt.Errorf("failed to checkpoint temp db for index %s: %w", idx.Name, err)
 		}
+
+		// Get new stats before closing temp DB
+		var currFiles, currDirs, totalSize int64
+		_ = tempDB.QueryRow(`SELECT COUNT(*) FROM files WHERE is_dir = 0`).Scan(&currFiles)
+		_ = tempDB.QueryRow(`SELECT COUNT(*) FROM files WHERE is_dir = 1`).Scan(&currDirs)
+		_ = tempDB.QueryRow(`SELECT COALESCE(SUM(size), 0) FROM files WHERE is_dir = 0`).Scan(&totalSize)
+
 		tempDB.Close()
 
+		// Log comparison and final stats
+		if scanLogger != nil {
+			scanLogger.LogDatabaseStats(currFiles, currDirs, totalSize)
+			scanLogger.LogComparison(prevFiles, currFiles, prevDirs, currDirs)
+		}
+
 		// Atomic rename: replace main database with temp database
+		if scanLogger != nil {
+			scanLogger.Log("Swapping database...")
+		}
 		log.Println("Swapping database...")
 		if err := os.Rename(tempDBPath, absDBPath); err != nil {
 			os.Remove(tempDBPath)
 			os.Remove(tempDBPath + "-wal")
 			os.Remove(tempDBPath + "-shm")
+			if scanLogger != nil {
+				scanLogger.LogError("db_swap", absDBPath, err)
+				scanLogger.Close()
+			}
 			return fmt.Errorf("failed to rename temp db for index %s: %w", idx.Name, err)
 		}
 
@@ -103,6 +166,11 @@ func ScanIndexes(cfg *models.AppConfig) error {
 		os.Remove(tempDBPath + "-shm")
 
 		log.Printf("Index %s scan completed and atomically swapped\n", idx.Name)
+
+		// Close logger (this will write the summary)
+		if scanLogger != nil {
+			scanLogger.Close()
+		}
 
 		// Start background goroutine to calculate directory sizes
 		go func(dbPath string, indexName string) {
@@ -130,11 +198,14 @@ func initTempDB(tempPath string) (*sql.DB, error) {
 	return db, nil
 }
 
-func scanSource(ctx context.Context, db *sql.DB, source models.FileSource, indexName string) error {
+func scanSource(ctx context.Context, db *sql.DB, source models.FileSource, indexName string, scanLogger *ScanLogger) error {
 	if err := resetSearchableFlag(db); err != nil {
 		return err
 	}
 
+	if scanLogger != nil {
+		scanLogger.LogSection("FILE SCANNING")
+	}
 	log.Println("Scanning files...")
 
 	count := 0
@@ -147,6 +218,9 @@ func scanSource(ctx context.Context, db *sql.DB, source models.FileSource, index
 
 		if len(batchFiles) >= batch {
 			log.Printf("Inserting batch of %d files...", len(batchFiles))
+			if scanLogger != nil {
+				scanLogger.LogBatchInsert(len(batchFiles), count)
+			}
 			if err := upsertFilesBatch(ctx, db, batchFiles); err != nil {
 				return fmt.Errorf("failed to upsert batch at %d files: %w", count, err)
 			}
@@ -156,12 +230,18 @@ func scanSource(ctx context.Context, db *sql.DB, source models.FileSource, index
 	}
 	if len(batchFiles) > 0 {
 		log.Printf("Inserting final batch of %d files...", len(batchFiles))
+		if scanLogger != nil {
+			scanLogger.LogBatchInsert(len(batchFiles), count)
+		}
 		if err := upsertFilesBatch(ctx, db, batchFiles); err != nil {
 			return fmt.Errorf("failed to upsert final batch: %w", err)
 		}
 	}
 
 	log.Printf("Scanning completed. Total files scanned: %d", count)
+	if scanLogger != nil {
+		scanLogger.Log("Scanning completed. Total records from source: %d", count)
+	}
 	log.Println("Finalizing index (this may take a while)...")
 	if err := finalizeIndex(db, indexName); err != nil {
 		return err
